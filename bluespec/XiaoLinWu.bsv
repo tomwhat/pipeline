@@ -1,4 +1,4 @@
-import Types::*;
+import PipeLineTypes::*;
 import FIFO::*;
 import FixedPoint::*;
 

@@ -29,26 +29,30 @@ namespace peachy {
         return std::pair<FragPos,FragPos>(FragPos{ox0, oy0, a.z}, FragPos{ox1, oy1, b.z});
     }
 
-    bool XiaoLinWu::startLine(Vec3 a, Vec3 b) {
+    bool XiaoLinWu::startLine(FragPos a, FragPos b) {
         if (busy) {
             return false;
         }
         // else
         busy = true; // finishing the line should be accomplished in update rule
 
-        // convert
-        auto ix0 = PixCoord(a.x);
-        auto ix1 = PixCoord(b.x);
-        auto iy0 = PixCoord(a.y);
-        auto iy1 = PixCoord(b.y);
+        auto ix0 = a.x.val;
+        auto ix1 = b.x.val;
+        auto iy0 = a.y.val;
+        auto iy1 = b.y.val;
 
-        xflip = ix0.val > ix1.val;
-        yflip = iy0.val > iy1.val;
+        xflip = ix0 > ix1;
+        yflip = iy0 > iy1;
         auto tx0 = xflip ? ix1 : ix0;
         auto tx1 = xflip ? ix0 : ix1;
         auto ty0 = yflip ? iy1 : iy0;
         auto ty1 = yflip ? iy0 : iy1;
-        float k = (float)(ty1.val-ty0.val) / (float)(tx1.val-tx0.val);
+        float k;
+        if(tx0 == tx1) {
+            k = 1000000000;
+        } else {
+            k = (float)(ty1-ty0) / (float)(tx1-tx0);
+        }
         swaps = k > 1.0;
         x0 = swaps ? ty0 : tx0;
         x1 = swaps ? ty1 : tx1;
@@ -56,10 +60,6 @@ namespace peachy {
         y1 = swaps ? tx1 : ty1;
         k  = swaps ? 1.0/k : k;
         ky.set(k * (float)Offset::max() + 0.5);
-        std::cout << "k: " << k << "\n";
-        std::cout << "Offset(-1): " << (float)Offset(-1).val << "\n";
-        std::cout << "max(): " << Offset::max() << "\n";
-        std::cout << "ky: " << ky.val << "\n";
         z0 = a.z; // z is already inverted
         z1 = b.z;
         kz = (z1-z0) / (x1.val-x0.val);
@@ -91,7 +91,7 @@ namespace peachy {
             y0.set(y0.val + 1);
             y1.set(y1.val - 1);
         }
-        unsigned int intensity = D.val >> (N - M);
+        unsigned int intensity = D.val >> (N_BITS - M_BITS);
         unsigned int invertedI = ~intensity;
         // push to outFIFO
         auto l = FragPos{x0.val, y0.val, z0};

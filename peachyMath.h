@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PEACHY_MATH
+#define PEACHY_MATH
 
 #include <iostream>
 
@@ -13,6 +14,7 @@ namespace peachy {
         float mag();
         Vec3 cross(const Vec3& rhs);
         Vec3 operator+(const Vec3& rhs);
+        Vec3 operator*(const float& rhs);
         Vec3 operator-();
     };
 
@@ -21,10 +23,12 @@ namespace peachy {
         float i;
         float j;
         float k;
+        float scale = 1;
 
         static Quat identity();
         static Quat fromAxis(float i, float j, float k, float theta);
         Quat operator*(const Quat& rhs);
+        Quat operator*(const float& rhs);
         Quat inverse();
     };
 
@@ -39,6 +43,7 @@ namespace peachy {
         Mat3 inverse();
         Vec3 operator*(const Vec3& rhs);
         Mat3 operator*(const Mat3& rhs);
+        Mat3 operator*(const float& rhs);
     };
 
     template <class T>
@@ -50,6 +55,7 @@ namespace peachy {
         Transform pivot(T tn);
         Transform rotate(T tn);
         Transform inverse();
+        Transform scale(float f);
         Transform operator*(const Transform& rhs);
     };
 
@@ -67,3 +73,5 @@ namespace peachy {
 }
 std::ostream& operator<<(std::ostream& os, const peachy::Vec3 v);
 std::ostream& operator<<(std::ostream& os, const peachy::Mat3 m);
+
+#endif

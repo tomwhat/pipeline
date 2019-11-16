@@ -30,6 +30,9 @@ namespace peachy {
     Vec3 Vec3::operator+(const Vec3& rhs) {
         return Vec3{this->x+rhs.x, this->y+rhs.y, this->z+rhs.z};
     }
+    Vec3 Vec3::operator*(const float& rhs) {
+        return Vec3{x*rhs, y*rhs, z*rhs};
+    }
     Vec3 Vec3::operator-() {
         return Vec3{-x,-y,-z};
     }
@@ -56,6 +59,14 @@ namespace peachy {
     // Makes inverse Quaternion
     Quat Quat::inverse() {
         return Quat {w,-i,-j,-k};
+    }
+
+    Quat Quat::operator*(const float& rhs) {
+        float w1 = w*rhs;
+        float i1 = i*rhs;
+        float j1 = j*rhs;
+        float k1 = k*rhs;
+        return Quat {w1, i1, j1, k1};
     }
 
     Mat3 Mat3::identity() {
@@ -140,6 +151,23 @@ namespace peachy {
         res.zx = zx*rhs.xx + zy*rhs.yx + zz*rhs.zx;
         res.zy = zx*rhs.xy + zy*rhs.yy + zz*rhs.zy;
         res.zz = zx*rhs.xz + zy*rhs.yz + zz*rhs.zz;
+        std::cout<<"mult\n"<<zx<<", "<<zy<<", "<<zz<<"\n"
+        <<"and\n"<<rhs.xx<<", "<<rhs.yx<<", "<<rhs.zx<<"\n"
+        <<"for\n"<<res.zx<<"\n";
+        return res;
+    }
+
+    Mat3 Mat3::operator*(const float& rhs) {
+        Mat3 res;
+        res.xx = xx*rhs;
+        res.xy = xy*rhs;
+        res.xz = xz*rhs;
+        res.yx = yx*rhs;
+        res.yy = yy*rhs;
+        res.yz = yz*rhs;
+        res.zx = zx*rhs;
+        res.zy = zy*rhs;
+        res.zz = zz*rhs;
         return res;
     }
     // Transform<Mat3>
@@ -172,9 +200,17 @@ namespace peachy {
         return Transform<Mat3>(mp, p);
     }
     template<>
+    Transform<Mat3> Transform<Mat3>::scale(float f) {
+        Mat3 ut = Mat3::identity()*f;
+        Mat3 ot = ut*t;
+        Vec3 p = pos * f;
+        return Transform<Mat3>(ot, p);
+    }
+    template<>
     Transform<Mat3> Transform<Mat3>::operator*(const Transform<Mat3>& rhs) {
-        Transform<Mat3> t = rotate(rhs.t);
-        return Transform<Mat3>(t.t, t.pos + rhs.pos);
+        Transform<Mat3> nt = rhs;
+        nt = nt.rotate(this->t);
+        return Transform<Mat3>(nt.t, nt.pos + this->pos);
     }
 
     // Transform<Quat>
@@ -211,6 +247,10 @@ namespace peachy {
         ot.t = t.inverse();
         ot.pos = -pos;
         return ot;
+    }
+    template<>
+    Transform<Quat> Transform<Quat>::scale(float f) {
+        
     }
 
     Transform<Mat3> toM(Transform<Quat> q) {

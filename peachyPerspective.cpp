@@ -12,6 +12,9 @@ namespace peachy {
 
         // Intermediate level between transform and projection
         Vec3 stretched_cam_space = ct.t*v + ct.pos;
+        if (stretched_cam_space.z == 0) {
+            return Vec3{-1,-1,-1};
+        }
         // perspective divide
         // (-z) is used because we have x:right,y:up,z:out of
         // screen, but we want to see what's on the other side
@@ -26,4 +29,6 @@ namespace peachy {
         //float d = z*a + b;
         return Vec3 {x, y, z};
     }
+
+    
 }

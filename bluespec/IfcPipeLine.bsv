@@ -1,8 +1,8 @@
-import PipeLineTypes::*;
+// import PipeLineTypes::*;
 
 // TB: I hardcoded the bit width for connectal, otherwise it confuses the parser
 
-interface Transform;
+interface TransformReq;
     method Action set(
 	Bit#(16) posx, Bit#(16) posy, Bit#(16) posz,
 	Bit#(16) mxx , Bit#(16) mxy , Bit#(16) mxz ,
@@ -10,7 +10,7 @@ interface Transform;
 	Bit#(16) mzx , Bit#(16) mzy , Bit#(16) mzz );
 endinterface
 
-interface Triangles;
+interface TriangleReq;
     method Action enq(
 	Bit#(16) ax, Bit#(16) ay, Bit#(16) az,
 	Bit#(16) bx, Bit#(16) by, Bit#(16) bz,
@@ -18,16 +18,12 @@ interface Triangles;
 	Bool valid);
 endinterface
 
-interface PipeLine;
-    interface Transform setTransform;
-    interface Triangles inputTriangles;
-endinterface
-
+// HW to Sw
 interface PipeLineIndication;
     method Action callbackFrag(
 	Bit#(10) fposx,
 	Bit#(10) fposy,
-	Bit#(16)     fposz,
+	Bit#(16) fposz,
 	Bit#(4) fintensity);
 endinterface
 

@@ -1,6 +1,6 @@
 import FixedPoint::*;
 import FIFO::*;
-import Types::*;
+import PipeLineTypes::*;
 import ClientServer::*;
 import GetPut::*;
 

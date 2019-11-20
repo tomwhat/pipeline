@@ -1,18 +1,34 @@
 import PipeLineTypes::*;
 import FIFO::*;
 import FixedPoint::*;
+import ClientServer::*;
+import GetPut::*;
 
+typedef struct {
+    Frag a;
+    Bool va;
+    Frag b;
+    Bool vb;
+    Frag c;
+    Bool vc;
+    Frag d;
+    Bool vd;
+} FragWave deriving(Bits);
+
+typedef Server#(
+    Tuple2#(FragPos, FragPos),
+    FragWave
+) LineService;
 
 interface XiaoLinWu;
     method Bool busy;
-    method ActionValue#(Bool) startLine(FragPos a, FragPos b);
-    method ActionValue#(Frag) getFrag();
+    interface LineService line;
 endinterface
 
 
 module mkXiaoLinWu(XiaoLinWu);
 
-    FIFO#(Frag) outFIFO <- mkFIFO;
+    FIFO#(FragWave) outFIFO <- mkFIFO;
 
     Reg#(Bool) busy <- mkRegU;
     Reg#(Bool) xflip <- mkRegU;
@@ -30,9 +46,7 @@ module mkXiaoLinWu(XiaoLinWu);
 
     method Bool busy = busy;
     
-    // TB: I think this should be a function as you call it here (methods are not callable from within the module itself)
     function Tuple2#(FragPos, FragPos) descramble(FragPos a, FragPos b);
-        // TB: the swaps register is never written anywhere, so swap always contains an undefined value
         PixCoord tx0 = (swaps) ? a.y : a.x;
         PixCoord ty0 = (swaps) ? a.x : a.y;
         PixCoord tx1 = (swaps) ? b.y : b.x;
@@ -41,8 +55,8 @@ module mkXiaoLinWu(XiaoLinWu);
         PixCoord oy0 = (yflip) ? ty1 : ty0;
         PixCoord ox1 = (xflip) ? tx0 : tx1;
         PixCoord ox0 = (xflip) ? tx1 : tx0;
-        // TB: See next rule comment about syntax for struct construction
-        return {{ox0, oy0, a.z}, {ox1, oy1, b.z}};
+        return tuple2(FragPos{x:ox0, y:oy0, z:a.z},
+                      FragPos{x:ox1, y:oy1, z:b.z});
     endfunction
 
     // This is one of my more expensive blocks...
@@ -53,11 +67,8 @@ module mkXiaoLinWu(XiaoLinWu);
     //  1.0/(ydiff/xdiff) * maxVal + 0.5
     //  or  (z1 - z0) / (x1.val - x0.val) I would say
     method Action startLine(FragPos a, FragPos b) if (!busy);
-        busy <= True;
         let xf = (a.x > b.x);
-        xflip <= xf;
         let yf = (a.y > b.y);
-        yflip <= yf;
         
         let tx0 = (xf) ? b.x : a.x;
         let tx1 = (xf) ? a.x : b.x;
@@ -67,47 +78,50 @@ module mkXiaoLinWu(XiaoLinWu);
         Fractional xdiff = fromInt(b.x - a.x);
         Fractional ydiff = fromInt(b.y - a.y);
         Fractional k = ydiff / xdiff;
+        Fractional inverseK = xdiff / ydiff;
 
-        // TB: There is a register named swaps that is shadowed here, the register is actually never written
-        // I think you may want to write it here? swaps <= k > 1.0;
-        let swaps = (k > 1.0);
-        let x0 = (swaps) ? ty0 : tx0;
-        let x1 = (swaps) ? ty1 : tx1;
-        let y0 = (swaps) ? tx0 : ty0;
-        let y1 = (swaps) ? tx1 : ty1;
-        // TB: ? missing in the next line?
-        k = (swaps) 1.0 / k : k;
+        let thisSwaps = (k > 1.0);
+        let thisx0 = (thisSwaps) ? ty0 : tx0;
+        let thisx1 = (thisSwaps) ? ty1 : tx1;
+        let thisy0 = (thisSwaps) ? tx0 : ty0;
+        let thisy1 = (thisSwaps) ? tx1 : ty1;
 
-        // Does this work? Is there a better way?
-        // TB: unpack(-1) does the job, or even cleaner maxBound/minBound two functions of the Bound typecass.
-	// unpack(-1)
-        Offset maxval = unpack(pack(signExtend(1b1)));
+        k = (thisSwaps) ? inverseK : k;
 
-        // TB to myself: I am not familiar enough with FixedPoint package, how are floating literals defined
-	// TB: zero extend or truncate is more explicit.
-        ky <= unpack(pack((k * maxval + 0.5).i));
+        // Alternative: unpack(-1);
+        Offset maxval = maxBound;
 
-        z0 <= a.z;
-        z1 <= b.z;
+        let thisz0 = a.z;
+        let thisz1 = b.z;
 
-        // TB: z1 - z0 are the old z1 and z0 right?  Not the one you just wrote
-        // and that are going to be visible only next cycle.
-        kz <= (z1 - z0) / (x1.val - x0.val);
-
-        D <= 0;
-
-        // TB: I do not believe that this syntax is BSV compatible
-        // I think you are looking for "FragPos { x: thisx0 , y: thisy0, z: z0}"
-        // Same remark about z0,z1 that are the old value
-        FragPos l = {x0, y0, z0};
-        FragPos r = {x1, y1, z1};
+        FragPos l = {x:thisx0, y:thisy0, z:thisz0};
+        FragPos r = {x:thisx1, y:thisy1, z:thisz1};
 
         // Perhaps descrambling and queueing could
         // be done separately in a rule
         let outs = descramble(l, r);
-        // TB: You cannot enqueue twice in the same fifo in one rule
-        outFIFO.enq({tpl_1(outs), unpack(pack(signExtend(1b1)))});
-        outFIFO.enq({tpl_2(outs), unpack(pack(signExtend(1b1)))});
+
+        FragWave outwave;
+        outwave.a = Frag{pos: tpl_1(outs), intensity: maxBound};
+        outwave.va = True;
+        outwave.b = Frag{pos: tpl_2(outs), intensity: maxBound};
+        outwave.vb = True;
+        outwave.vc = False;
+        outwave.vd = False;
+        //
+        //
+        // State change
+        busy <= True;
+        xflip <= xf;
+        yflip <= yf;
+        swaps <= thisSwaps;
+        z0 <= thisz0;
+        z1 <= thisz1;
+        // Offset or Bit#(14) <= Fractional.i or Bit#(8)
+        ky <= extend((k * maxval + 0.5).i);
+        kz <= (thisz1 - thisz0) / (thisx1 - thisx0);
+        D <= 0;
+        outFIFO.enq(outwave);
     endmethod
 
     rule tick(busy);
@@ -117,59 +131,67 @@ module mkXiaoLinWu(XiaoLinWu);
         let thisx1 = x1 - 1;
         let thisz0 = z0 + kz;
         let thisz1 = z1 - kz;
+        
+        if (thisx0 >= thisx1) begin
+            thisBusy = False;
+        end else begin
+            let thisD = D + ky;
+            
+            let thisy0 = y0;
+            let thisy1 = y1;
+            if (thisD < D || (thisD == prev && ky != 0)) begin
+                thisy0 = thisy0 + 1;
+                thisy1 = thisy1 - 1;
+            end
+            // TB: N_BITS is a numeric type, so you will need valueOf to make an
+            // Integer out of it, and then fromInteger to make an Intensity out of
+            // it : fromInteger(valueOf(N_BITS))
+            Intensity intensity = thisD >> (valueOf(N_BITS) - valueOf(M_BITS));
+            Intensity invertedI = ~intensity;
+
+            // TB: See comment in previous rule about the syntax for record
+            FragPos l = FragPos{x:thisx0, y:thisy0, z:z0};
+            FragPos r = FragPos{x:thisx1, y:thisy1, z:z1};
+            FragPos u = FragPos{x:thisx0, y:thisy0+1, z:z0};
+            FragPos d = FragPos{x:thisx1, y:thisy1-1, z:z1};
+
+            // TB: Oops cpp syntax left there :)
+            let outp = descramble(l, r);
+            let outs = descramble(u, d);
+
+            // Enque batch to be pushed through the
+            // pipeline one at a time, or make four
+            // streams?
+            // TB: Either 4 streams, or 1 stream of Tuple4#(Frag) or of a custom struct carrying the 4frags
+            FragWave outwave;
+            outwave.a = Frag{pos: tpl_1(outp), intensity: invertedI};
+            outwave.va = True;
+            outwave.b = Frag{pos: tpl_2(outp), intensity: invertedI};
+            outwave.vb = True;
+            outwave.c = Frag{pos: tpl_1(outs), intensity: intensity};
+            outwave.vc = True;
+            outwave.d = Frag{pos: tpl_2(outs), intensity: intensity};
+            outwave.vd = True;
+        end
+        //
+        //
+        // State change
         x0 <= thisx0;
         x1 <= thisx1;
         z0 <= thisz0;
         z1 <= thisz1;
-        if (thisx0 >= thisx1) begin
-            // TB: That thisBusy does not seem to be used?
-            // it looks equivalent to just busy <= False;
-            thisBusy = False;
-            busy <= thisBusy;
-        end
-	// TB maybe this should not be executed? Algorithm? else construct may be the solution
-        let thisD = D + ky;
+        busy <= thisBusy;
         D <= thisD;
-        let thisy0 = y0;
-        let thisy1 = y1;
-        if (thisD < D || (thisD == prev && ky != 0)) begin
-            thisy0 = thisy0 + 1;
-            thisy1 = thisy1 - 1;
-        end
         y0 <= thisy0;
         y1 <= thisy1;
-
-        // TB: N_BITS is a numeric type, so you will need valueOf to make an
-        // Integer out of it, and then fromInteger to make an Intensity out of
-        // it : fromInteger(valueOf(N_BITS))
-        Intensity intensity = thisD >> (N_BITS - M_BITS);
-        Intensity invertedI = ~intensity;
-
-        // TB: See comment in previous rule about the syntax for record
-        FragPos l = {thisx0, thisy0, z0};
-        FragPos r = {thisx1, thisy1, z1};
-        FragPos u = {thisx0, thisy0+1, z0};
-        FragPos d = {thisx1, thisy1-1, z1};
-
-        // TB: Oops cpp syntax left there :)
-        auto outp = descramble(l, r);
-        auto outs = descramble(u, d);
-
-        // Enque batch to be pushed through the
-        // pipeline one at a time, or make four
-        // streams?
-        // TB: Either 4 streams, or 1 stream of Tuple4#(Frag) or of a custom struct carrying the 4frags
-        outFIFO.enq({tpl_1(outp), invertedI});
-        outFIFO.enq({tpl_2(outp), invertedI});
-        outFIFO.enq({tpl_1(outs), intensity});
-        outFIFO.enq({tpl_2(outs), intensity});
-        
+        outFIFO.enq(outwave);
     endrule
 
-    method ActionValue#(Frag) getFrag();
-        let f <- outFIFO.first();
-        outFIFO.deq();
-        return f;
-    endmethod
+    interface LineService line;
+        method Action put(Tuple2#(FragPos, FragPos) tup);
+            startLine(tpl_1(tup), tpl_2(tup));
+        endmethod
+        method ActionValue#(FragWave) get = toGet(outFIFO);
+    endinterface
 
 endmodule

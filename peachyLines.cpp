@@ -1,7 +1,6 @@
 #include "peachyMath.h"
 #include "peachyTypes.h"
 #include <queue>
-#include <optional>
 #include <utility>
 #include <iostream>
 

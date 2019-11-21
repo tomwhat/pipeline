@@ -1,6 +1,7 @@
 import FixedPoint::*;
 import GetPut::*;
 import FIFO::*;
+import ClientServer::*;
 
 import IfcPipeLine::*;
 import PipeLineTypes::*;
@@ -29,14 +30,14 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
     // Breaks triangles into vertices and sends them to be transformed
     rule in_to_tr;
         if (validA) begin
-            transf.doTransform.put(bufferA);
+            transf.doTransform.request.put(bufferA);
             bufferA <= bufferB;
             validA <= validB;
             validB <= False;
         end else begin
             let t = fifoTriIn.first();
             fifoTriIn.deq();
-            transf.doTransform.put(t.a);
+            transf.doTransform.request.put(t.a);
             bufferA <= t.b;
             bufferB <= t.c;
             validA <= True;
@@ -50,9 +51,9 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
     // Takes transformed vertices (now as FragPos) and feeds them as lines
     // to the XiaoLinWu algorithm
     rule tr_to_xl;
-        let fragPos <- transf.doTransform.get();
+        let fragPos <- transf.doTransform.response.get();
         if (validLastFragPos) begin
-            xlw.line.put(tuple2(lastFragPOs, fragPos);
+            xlw.request.put(tuple2(lastFragPos, fragPos));
         end
         lastFragPos <= fragPos;
         validLastFragPos <= True;
@@ -76,7 +77,7 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
             validFragB <= validFragC;
             validFragC <= False;
         end else begin
-            let fw <- xlw.line.get();
+            let fw <- xlw.response.get();
             let f = fw.a;
             indication.callbackFrag(pack(f.pos.x),pack(f.pos.y),pack(f.pos.z),pack(f.intensity));
             fragBufA <= fw.b;
@@ -94,7 +95,14 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
 	                      Bit#(16) myx , Bit#(16) myy , Bit#(16) myz ,
 	                      Bit#(16) mzx , Bit#(16) mzy , Bit#(16) mzz );
 	        //indication.callbackFrag(truncate(posx), truncate(posy), truncate(posz), 0);
-            perspective.setTransform.put(t);
+	        Mat3 m = Mat3 {
+	        xx: unpack(mxx), xy: unpack(mxy), xz: unpack(mxz),
+	        yx: unpack(myx), yy: unpack(myy), yz: unpack(myz),
+	        zx: unpack(mzx), zy: unpack(mzy), zz: unpack(mzz)
+	        };
+	        Vec3 p = Vec3 {x:unpack(posx), y:unpack(posy), z:unpack(posz)};
+	        Transform t = Transform {m: m, pos: p};
+            transf.setTransform.put(t);
         endmethod
     endinterface
 

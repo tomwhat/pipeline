@@ -2,6 +2,7 @@
 #define __LIBBMP_H__
 
 #include <vector>
+#include <string>
 
 #define BMP_MAGIC 19778
 

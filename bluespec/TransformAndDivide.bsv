@@ -53,8 +53,19 @@ module mkTransformDivide(SettableTransformAndDivide);
     endfunction
 
     function FragPos mapToIntegers(Vec3 v);
-        PixCoord x = truncate(v.x * (NUM_PIXELS/2) + (NUM_PIXELS/2));
-        PixCoord y = truncate(v.y * (-NUM_PIXELS/2) + (NUM_PIXELS/2));
+    	Fractional half;
+    	Bit#(12) numpix = fromInteger(valueOf(NUM_PIXELS));
+    	Bit#(16) bit_half = {numpix>>1,'0};
+    	half.i = bit_half[15:8];
+    	half.f = bit_half[7:0];
+    	Fractional halfx = v.x * half;
+    	Fractional halfy = v.y * half;
+    	Bit#(12) ix = extend(half.i) + extend(halfx.i);
+    	Bit#(12) iy = extend(half.i) - extend(halfy.i);
+    	//Bit#(10) tx = truncate(pack(ix));
+    	//Bit#(10) ty = truncate(pack(iy));
+        PixCoord x = truncate(unpack(ix));
+        PixCoord y = truncate(unpack(iy));
         return FragPos{x:x, y:y, z:v.z};
     endfunction
 
@@ -71,7 +82,7 @@ module mkTransformDivide(SettableTransformAndDivide);
 
     interface setTransform = toPut(asReg(transform));
     interface TransformAndDivide doTransform;
-        interface put = toPut(inFIFO);
-        interface get = toGet(outFIFO);
+        interface request = toPut(inFIFO);
+        interface response = toGet(outFIFO);
     endinterface
 endmodule

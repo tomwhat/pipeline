@@ -15,17 +15,20 @@ CPPFILES += \
 	peachyPerspective.cpp \
 	peachyLines.cpp \
 	peachyMath.cpp \
-	peachyTypes.h \
-	libraries/libbmp.h \
+	libraries/libbmp.cpp \
 
 CONNECTALFLAGS += --mainclockperiod=20
-# CONNECTALFLAGS += --cxxflags="peachyPipeline.cpp peachyPerspective.cpp peachyLines.cpp peachyMath.cpp peachyTypes.h -std=gnu++11 -Ilibbmp/CPP "
-# CONNECTALFLAGS += --cxxflags="-std=gnu++11"
 
 CONNECTALFLAGS += --nonstrict
-CONNECTALFLAGS += -I libraries
-#include $(CONNECTALDIR)/Makefile.connectal
 
+CONNECTALFLAGS += -Ilibraries
+
+CONNECTALFLAGS += --cxxflags="-std=gnu++14"
+
+include $(CONNECTALDIR)/Makefile.connectal
+
+buildstuff:
+	$(MAKE) build.bluesim
 
 swmain: test.cpp peachyPipeline.cpp peachyPerspective.cpp peachyLines.cpp peachyMath.cpp peachyTypes.h
 	g++ -o swmain test.cpp peachyPipeline.cpp peachyPerspective.cpp peachyLines.cpp peachyMath.cpp libraries/libbmp.cpp -Ilibraries

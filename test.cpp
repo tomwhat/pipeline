@@ -6,14 +6,14 @@
 
 #include "peachyTypes.h"
 #include "OBJ_Loader.h"
-
+/*
 #include "TransformReq.h"
 #include "TriangleReq.h"
 
 #include "PipeLineIndication.h"
-
+*/
 using namespace peachy;
-
+/*
 static TransformReqProxy *transformReq = 0;
 static TriangleReqProxy *triangleReq = 0;
 
@@ -27,12 +27,14 @@ public:
   PipeLineIndication(unsigned int id) : PipeLineIndicationWrapper(id) {}
 };
 
-
+*/
 int main(int argc, char *argv[]) {
+/*
     transformReq = new TransformReqProxy(IfcNames_TransformReqS2H);
     triangleReq = new TriangleReqProxy(IfcNames_TriangleReqS2H);
     PipeLineIndication pipelineIndication(IfcNames_PipeLineIndicationH2S);
     transformReq->set( 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1);
+  */
 
     // Just create transform and camera
     Quat r = Quat::fromAxis(0.,1.,0.,PI/2);

@@ -87,9 +87,14 @@ int main(int argc, char *argv[]) {
                 Vec3 vw = Vec3{w.Position.X, w.Position.Y, w.Position.Z};
                 //Triangle tri = Triangle{vu, vv, vw};
                 //pipeline->inputTriangles.push(tri);
-                triangleReq->enq(vu.x, vu.y, vu.z,
-                                 vv.x, vv.y, vv.z,
-                                 vw.x, vw.y, vw.z,
+
+                // convert to fixed point
+                fpVec3 fpu = fpVec3(vu);
+                fpVec3 fpv = fpVec3(vv);
+                fpVec3 fpw = fpVec3(vw);
+                triangleReq->enq(fpu.x, fpu.y, fpu.z,
+                                 fpv.x, fpv.y, fpv.z,
+                                 fpw.x, fpw.y, fpw.z,
                                  true);
             }
         }

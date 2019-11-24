@@ -18,6 +18,14 @@ namespace peachy {
         Vec3 operator-();
     };
 
+    struct fpVec3 {
+        uint16_t x;
+        uint16_t y;
+        uint16_t z;
+
+        fpVec3(Vec3 v);
+    };
+
     struct Quat {
         float w;
         float i;

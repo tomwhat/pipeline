@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <math.h>
 #include <iomanip>
 #include <sstream>
 
@@ -35,6 +36,30 @@ namespace peachy {
     }
     Vec3 Vec3::operator-() {
         return Vec3{-x,-y,-z};
+    }
+
+    fpVec3::fpVec3(Vec3 v) {
+        float intpart;
+        float fractpart;
+        uint16_t lower;
+        uint16_t upper;
+        fractpart = modf(v.x, &intpart);
+        lower = (uint16_t)(fractpart * 256.0f);
+        upper = (uint16_t)(int)(intpart);
+        upper = upper << 8;
+        x = lower | upper;
+        
+        fractpart = modf(v.y, &intpart);
+        lower = (uint16_t)(fractpart * 256.0f);
+        upper = (uint16_t)(int)(intpart);
+        upper = upper << 8;
+        y = lower | upper;
+
+        fractpart = modf(v.z, &intpart);
+        lower = (uint16_t)(fractpart * 256.0f);
+        upper = (uint16_t)(int)(intpart);
+        upper = upper << 8;
+        z = lower | upper;
     }
     // Quaternion
     // Create identity quaternion

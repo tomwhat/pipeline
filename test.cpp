@@ -20,7 +20,7 @@ using namespace peachy;
 static TransformReqProxy *transformReq = 0;
 static TriangleReqProxy *triangleReq = 0;
 
-static volatile timeToFinish = false;
+static volatile bool timeToFinish = false;
 
 class PipeLineIndication: public PipeLineIndicationWrapper
 {
@@ -37,7 +37,7 @@ class PipeLineIndication: public PipeLineIndicationWrapper
     }
 
     private:
-    BmpImg img;
+    BmpImg *img;
 };
 
 
@@ -89,11 +89,12 @@ int main(int argc, char *argv[]) {
                 //pipeline->inputTriangles.push(tri);
                 triangleReq->enq(vu.x, vu.y, vu.z,
                                  vv.x, vv.y, vv.z,
-                                 vw.x, vw.y, vw.z);
+                                 vw.x, vw.y, vw.z,
+                                 true);
             }
         }
     }
-    std::chrono::high_resolution_clock start = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     bool didPrintOnce = false;
     while (true) {
         std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - start;

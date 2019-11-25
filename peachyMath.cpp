@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <cmath>
-#include <math.h>
 #include <iomanip>
 #include <sstream>
 
@@ -43,19 +42,19 @@ namespace peachy {
         float fractpart;
         uint16_t lower;
         uint16_t upper;
-        fractpart = modf(v.x, &intpart);
+        fractpart = modff(v.x, &intpart);
         lower = (uint16_t)(fractpart * 256.0f);
         upper = (uint16_t)(int)(intpart);
         upper = upper << 8;
         x = lower | upper;
         
-        fractpart = modf(v.y, &intpart);
+        fractpart = modff(v.y, &intpart);
         lower = (uint16_t)(fractpart * 256.0f);
         upper = (uint16_t)(int)(intpart);
         upper = upper << 8;
         y = lower | upper;
 
-        fractpart = modf(v.z, &intpart);
+        fractpart = modff(v.z, &intpart);
         lower = (uint16_t)(fractpart * 256.0f);
         upper = (uint16_t)(int)(intpart);
         upper = upper << 8;
@@ -176,9 +175,6 @@ namespace peachy {
         res.zx = zx*rhs.xx + zy*rhs.yx + zz*rhs.zx;
         res.zy = zx*rhs.xy + zy*rhs.yy + zz*rhs.zy;
         res.zz = zx*rhs.xz + zy*rhs.yz + zz*rhs.zz;
-        std::cout<<"mult\n"<<zx<<", "<<zy<<", "<<zz<<"\n"
-        <<"and\n"<<rhs.xx<<", "<<rhs.yx<<", "<<rhs.zx<<"\n"
-        <<"for\n"<<res.zx<<"\n";
         return res;
     }
 

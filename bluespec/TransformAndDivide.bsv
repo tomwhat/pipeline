@@ -15,6 +15,33 @@ interface SettableTransformAndDivide;
 endinterface
 
 
+module mkFakeTransformAndDivide(SettableTransformAndDivide);
+	FIFO#(Bool) dummy <- mkFIFO;
+	
+	interface Put#(Transform) setTransform;
+		method Action put(Transform);
+			$display("Fake: Transform set");
+		endmethod
+	endinterface
+	
+	interface TransformAndDivide doTransform;
+		interface Put request;
+			method Action put(Vec3 v);
+				$display("Fake doTransform.request.put");
+				dummy.enq(?);
+			endmethod
+		endinterface
+		
+		interface Get response;
+			method ActionValue#(FragPos) get();
+				$display("Fake doTransform.reponse.get");
+				dummy.deq();
+				return FragPos{x:100, y:100: z:fromInteger(0.5)};
+			endmethod
+		endinterface
+	endinterface
+endmodule
+
 module mkTransformDivide(SettableTransformAndDivide);
     Reg#(Transform) transform <- mkRegU;
 

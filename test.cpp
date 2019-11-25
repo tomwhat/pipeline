@@ -54,12 +54,7 @@ int main(int argc, char *argv[]) {
     t.pos = t.pos + Vec3{0, 0, -4};
     Camera c = Camera(1.1, 100, 20*PI/180);
     Transform<Mat3> tm = toM(t);
-    std::cout<<"tm: \n"<<tm.t;
-    std::cout<<"c:\n"<<toM(c).t;
-    std::cout<<"ci:\n";
     Transform<Mat3> ci = c.getFOVCam();
-    std::cout<<ci.t;
-    std::cout<<"ci * tm:\n"<<(ci * tm).t;
 
     // Create and set pipeline
     //Pipeline *pipeline = new Pipeline();
@@ -73,6 +68,7 @@ int main(int argc, char *argv[]) {
     objl::Loader Loader;
     bool loadout = Loader.LoadFile("monkey.obj");
     if (loadout) {
+    	std::cout<<"Successfully loaded monkey\n";
         for (int i = 0; i < Loader.LoadedMeshes.size(); i++) {
             objl::Mesh curMesh = Loader.LoadedMeshes[i];
             for (int j = 0; j < curMesh.Indices.size(); j+=3) {
@@ -98,6 +94,8 @@ int main(int argc, char *argv[]) {
                                  true);
             }
         }
+    } else {
+    	std::cout<<"Failed to load monkey\n";
     }
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     bool didPrintOnce = false;

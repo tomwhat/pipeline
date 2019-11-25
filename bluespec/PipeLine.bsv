@@ -19,8 +19,8 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
 
     FIFO#(Triangle) fifoTriIn <- mkFIFO;
     FIFO#(Frag) fifoFragOut <- mkFIFO;
-    SettableTransformAndDivide transf <- mkTransformDivide;
-    XiaoLinWu xlw <- mkXiaoLinWu;
+    SettableTransformAndDivide transf <- mkFakeTransformDivide;
+    XiaoLinWu xlw <- mkFakeXiaoLinWu;
 
     // Some state for in_to_tr
     Reg#(Vec3) bufferA <- mkRegU;
@@ -47,6 +47,7 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
 
     // Some state for tr_to_tr
     Reg#(FragPos) lastFragPos <- mkRegU;
+    // If we want to draw multiple objects, this should be reset by some method
     Reg#(Bool) validLastFragPos <- mkReg(False);
     // Takes transformed vertices (now as FragPos) and feeds them as lines
     // to the XiaoLinWu algorithm
@@ -111,12 +112,12 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
                           Bit#(16) bx, Bit#(16) by, Bit#(16) bz,
                           Bit#(16) cx, Bit#(16) cy, Bit#(16) cz,
                           Bool valid);
-        Triangle t;
-        t.a = Vec3{x:unpack(ax), y:unpack(ay), z:unpack(az)};
-        t.b = Vec3{x:unpack(bx), y:unpack(by), z:unpack(bz)};
-        t.c = Vec3{x:unpack(cx), y:unpack(cy), z:unpack(cz)};
-        t.valid = valid;
-        fifoTriIn.enq(t);
+		    Triangle t;
+		    t.a = Vec3{x:unpack(ax), y:unpack(ay), z:unpack(az)};
+		    t.b = Vec3{x:unpack(bx), y:unpack(by), z:unpack(bz)};
+		    t.c = Vec3{x:unpack(cx), y:unpack(cy), z:unpack(cz)};
+		    t.valid = valid;
+		    fifoTriIn.enq(t);
         endmethod
     endinterface
 endmodule

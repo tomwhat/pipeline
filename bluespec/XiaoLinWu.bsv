@@ -20,6 +20,27 @@ typedef Server#(
     FragWave
 ) XiaoLinWu;
 
+
+module mkFakeXiaoLinWu(XiaoLinWu);
+	FIFO#(Bool) dummy <- mkFIFO;
+
+	interface Put request;
+		method Action put(Tuple2#(FragPos, FragPos) tup);
+			$display("xlw put");
+			dummy.enq(?);
+		endmethod
+	endinterface
+	
+	interface Get response;
+		method ActionValue#(FragWave) get();
+			dummy.deq();
+			FragPos fp = FragPos{x:100, y:100, z:fromInteger(0.5)};
+			Frag f = Frag{pos: fp, intensity: maxBound};
+			return FragWave{a:f, va:True, b:?, vb:False, c:?, vc:False, d:?, vd:False};
+		endmethod
+	endinterface
+endmodule
+
 module mkXiaoLinWu(XiaoLinWu);
 
     FIFO#(FragWave) outFIFO <- mkFIFO;

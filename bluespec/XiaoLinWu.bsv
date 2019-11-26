@@ -22,21 +22,21 @@ typedef Server#(
 
 
 module mkFakeXiaoLinWu(XiaoLinWu);
-	FIFO#(Bool) dummy <- mkFIFO;
+	FIFO#(Tuple2#(FragPos, FragPos)) dummy <- mkFIFO;
 
 	interface Put request;
 		method Action put(Tuple2#(FragPos, FragPos) tup);
 			$display("xlw put");
-			dummy.enq(?);
+			dummy.enq(tup);
 		endmethod
 	endinterface
 	
 	interface Get response;
 		method ActionValue#(FragWave) get();
 			dummy.deq();
-			FragPos fp = FragPos{x:100, y:100, z:fromInteger(0.5)};
-			Frag f = Frag{pos: fp, intensity: maxBound};
-			return FragWave{a:f, va:True, b:?, vb:False, c:?, vc:False, d:?, vd:False};
+			Frag a = Frag{pos: tpl_1(dummy.first), intensity: maxBound};
+			Frag b = Frag{pos: tpl_2(dummy.first), intensity: maxBound};
+			return FragWave{a:a, va:True, b:b, vb:True, c:?, vc:False, d:?, vd:False};
 		endmethod
 	endinterface
 endmodule
@@ -120,10 +120,13 @@ module mkXiaoLinWu(XiaoLinWu);
         //
         //
         // State change
-        if (thisx0 >= thisx1) begin
+        if (thisx0 > thisx1) begin
             thisBusy = False;
+            $display("HW: XiaoLinWu: line finished, not busy");
         end else begin
         	outFIFO.enq(outwave);
+        	$display("HW: XiaoLinWu: outwave enqueued");
+        	$display("x: %d, y: %d", x0, y0);
       	end  
         x0 <= thisx0;
         x1 <= thisx1;
@@ -147,12 +150,12 @@ module mkXiaoLinWu(XiaoLinWu);
 			let ty0 = (yf) ? b.y : a.y;
 			let ty1 = (yf) ? a.y : b.y;
 
-			Bit#(10) ixdiff = pack(b.x - a.x);
-			Bit#(10) iydiff = pack(b.y - a.y);
-			Bit#(8) xdiffi = ixdiff[9:2];
-			Bit#(8) xdifff = {ixdiff[1:0], '0};
-			Bit#(8) ydiffi = iydiff[9:2];
-			Bit#(8) ydifff = {iydiff[1:0], '0};
+			Bit#(10) ixdiff = extend(pack(tx1)) - extend(pack(tx0));
+			Bit#(10) iydiff = extend(pack(ty1)) - extend(pack(ty0));
+			Bit#(8) xdiffi = {'0, ixdiff[9:5]};
+			Bit#(8) xdifff = {ixdiff[4:0], '0};
+			Bit#(8) ydiffi = {'0, iydiff[9:5]};
+			Bit#(8) ydifff = {iydiff[4:0], '0};
 			Fractional xdiff = Fractional{i:xdiffi, f:xdifff};
 			Fractional ydiff = Fractional{i:ydiffi, f:ydifff};
 			Fractional k = ydiff / xdiff;
@@ -197,11 +200,31 @@ module mkXiaoLinWu(XiaoLinWu);
 			swaps <= thisSwaps;
 			z0 <= thisz0;
 			z1 <= thisz1;
+			x0 <= thisx0;
+			x1 <= thisx1;
+			y0 <= thisy0;
+			y1 <= thisy1;
 			// Offset or Bit#(14) <= Fractional.i or Bit#(8)
-			Fractional fractMaxVal = Fractional{i:pack(maxval)[9:2], f:{pack(maxval)[1:0],'0}};
-			ky <= extend(unpack((k * fractMaxVal + 0.5).i));
+			Fractional fractMaxVal = Fractional{i:{'0, pack(maxval)[13:8]}, f:pack(maxval)[7:0]};
+			Fractional fractky = k * fractMaxVal + 0.5;
+			Offset thisky = unpack({fractky.i[5:0], fractky.f});
+			ky <= thisky;
 			kz <= (thisz1 - thisz0) / xdiff;
 			oD <= 0;
+			$display("HW: XiaoLinWu: line started, outwave enqueued");
+			/*
+			$display("tx0: %d, ty0: %d, tx1: %d, ty1: %d", tx0, ty0, tx1, ty1);
+			$display("ixdiff: %d", ixdiff);
+			$write("xdiff: "); fxptWrite(3, xdiff*32); $display(" ");
+			$write("ydiff: "); fxptWrite(3, ydiff*32); $display(" ");
+			$write("k: "); fxptWrite(3, k); $display(" ");
+			$write("fractky: "); fxptWrite(3, fractky); $display(" ");
+			$write("fractMaxVal: "); fxptWrite(3, fractMaxVal); $display(" ");
+			$display("fractky.i: %b", fractky.i);
+			$display("fractky.i[5:0]: %b", fractky.i[5:0]);
+			$display("ky: %d", thisky);
+			$display("maxval: %d", maxval);
+			*/
 			outFIFO.enq(outwave);
 	    endmethod
 	endinterface

@@ -6,6 +6,18 @@
 
 #include "peachyMath.h"
 
+uint16_t fl_to_fp(float f) {
+	float intpart;
+	float fractpart;
+	uint16_t lower;
+	uint16_t upper;
+	fractpart = modff(f, &intpart);
+	lower = (uint16_t)(fractpart * 256.0f);
+	upper = (uint16_t)(int)(intpart);
+	upper = upper << 8;
+	return upper | lower;
+}
+
 namespace peachy {
 
     // Vec3
@@ -315,6 +327,21 @@ namespace peachy {
         Mat3 p = Mat3{s,0,0,0,s,0,0,0,1};
         return Transform<Mat3>(p, Vec3::origin()) * toM(c_in);
     }
+    
+    fpTrans::fpTrans(Transform<Mat3> tm) {
+		x = fl_to_fp(tm.pos.x);
+		y = fl_to_fp(tm.pos.y);
+		z = fl_to_fp(tm.pos.z);
+		xx = fl_to_fp(tm.t.xx);
+		xy = fl_to_fp(tm.t.xy);
+		xz = fl_to_fp(tm.t.xz);
+		yx = fl_to_fp(tm.t.yx);
+		yy = fl_to_fp(tm.t.yy);
+		yz = fl_to_fp(tm.t.yz);
+		zx = fl_to_fp(tm.t.zx);
+		zy = fl_to_fp(tm.t.zy);
+		zz = fl_to_fp(tm.t.zz);
+	}
 }
 
 std::ostream& operator<<(std::ostream& os, const peachy::Vec3 v) {

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <ctime>
 #include <ratio>
+#include <cmath>
 #include <chrono>
 #include "libbmp.h" // draw bmp images easily
 #include "peachyMath.h"
@@ -12,6 +13,7 @@
 
 #include "TransformReq.h"
 #include "TriangleReq.h"
+#include "StopReq.h"
 
 #include "PipeLineIndication.h"
 
@@ -19,40 +21,42 @@ using namespace peachy;
 
 static TransformReqProxy *transformReq = 0;
 static TriangleReqProxy *triangleReq = 0;
+static StopReqProxy *stopReq = 0;
 
-static volatile bool timeToFinish = false;
 
 class PipeLineIndication: public PipeLineIndicationWrapper
 {
     public:
     void callbackFrag(const uint16_t fposx,const uint16_t fposy,const uint16_t fposz,const uint8_t fintensity) {
-        if (fposx == fposy == fposz == fintensity) {
-            img->write("line.bmp");
-            timeToFinish = true;
-        }
-        img->set_pixel(fposx, fposy, fintensity, fintensity, fintensity);
+        float f = (float) fintensity;
+        f = (f+1)*16 - 0.0001;
+        int i = (int) f;
+        img->set_pixel(fposx, fposy, i, i / 2, i);
     }
     PipeLineIndication(unsigned int id) : PipeLineIndicationWrapper(id) {
         img = new BmpImg(1024, 1024);
+    }
+    
+    void writeBmp() {
+    	img->write("line.bmp");
     }
 
     private:
     BmpImg *img;
 };
 
-
 int main(int argc, char *argv[]) {
 
     transformReq = new TransformReqProxy(IfcNames_TransformReqS2H);
     triangleReq = new TriangleReqProxy(IfcNames_TriangleReqS2H);
+    stopReq = new StopReqProxy(IfcNames_StopReqS2H);
     PipeLineIndication pipelineIndication(IfcNames_PipeLineIndicationH2S);
-    transformReq->set( 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1);
 
     // Just create transform and camera
-    Quat r = Quat::fromAxis(0.,1.,0.,PI/2);
+    Quat r = Quat::fromAxis(0.,1.,0.,0.);
     Transform<Quat> t = Transform<Quat>(r, Vec3::origin());
     t.pos = t.pos + Vec3{0, 0, -4};
-    Camera c = Camera(1.1, 100, 20*PI/180);
+    Camera c = Camera(1.1, 100, PI/4);
     Transform<Mat3> tm = toM(t);
     Transform<Mat3> ci = c.getFOVCam();
 
@@ -60,11 +64,13 @@ int main(int argc, char *argv[]) {
     //Pipeline *pipeline = new Pipeline();
     //pipeline->setTransform(ci * tm);
     Transform<Mat3> ts = ci * tm;
-    transformReq->set(ts.pos.x, ts.pos.y, ts.pos.z,
-                    ts.t.xx, ts.t.xy, ts.t.xz,
-                    ts.t.yx, ts.t.yy, ts.t.yz,
-                    ts.t.zx, ts.t.zy, ts.t.zz);
+    fpTrans fp = fpTrans(ts);
+    transformReq->set(fp.x, fp.y, fp.z,
+    				  fp.xx, fp.xy, fp.xz,
+    				  fp.yx, fp.yy, fp.yz,
+    				  fp.zx, fp.zy, fp.zz);
 
+	/*
     objl::Loader Loader;
     bool loadout = Loader.LoadFile("monkey.obj");
     if (loadout) {
@@ -97,16 +103,31 @@ int main(int argc, char *argv[]) {
     } else {
     	std::cout<<"Failed to load monkey\n";
     }
+    */
+    
+  	{
+  		Vec3 a = Vec3{-0.05, -0.05, -2};
+  		Vec3 b = Vec3{ 0.05, -0.05, -2};
+  		Vec3 c = Vec3{ 0.0,  0.05, -2};
+  		fpVec3 fpa = fpVec3(a);
+  		fpVec3 fpb = fpVec3(b);
+  		fpVec3 fpc = fpVec3(c);
+  		triangleReq->enq(fpa.x, fpa.y, fpa.z,
+  						 fpb.x, fpb.y, fpb.z,
+  						 fpc.x, fpc.y, fpc.z, true);
+  	}  
+  	
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     bool didPrintOnce = false;
     while (true) {
         std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - start;
-        if (t.count() > 5000) {
-            if (timeToFinish) {
-                break;
-            }
+        if (t.count() > 5) {
+        	std::cout<<"should stop\n";
+        	stopReq->stop();
+        	pipelineIndication.writeBmp();
+            break;
         } else {
-            if (timeToFinish && !didPrintOnce) {
+            if (!didPrintOnce) {
                 std::cout<<"time: "<<t.count()<<"\n";
                 didPrintOnce = true;
             }

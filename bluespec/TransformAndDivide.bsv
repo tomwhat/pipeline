@@ -15,11 +15,11 @@ interface SettableTransformAndDivide;
 endinterface
 
 
-module mkFakeTransformAndDivide(SettableTransformAndDivide);
+module mkFakeTransformDivide(SettableTransformAndDivide);
 	FIFO#(Bool) dummy <- mkFIFO;
 	
-	interface Put#(Transform) setTransform;
-		method Action put(Transform);
+	interface Put setTransform;
+		method Action put(Transform t);
 			$display("Fake: Transform set");
 		endmethod
 	endinterface
@@ -36,7 +36,7 @@ module mkFakeTransformAndDivide(SettableTransformAndDivide);
 			method ActionValue#(FragPos) get();
 				$display("Fake doTransform.reponse.get");
 				dummy.deq();
-				return FragPos{x:100, y:100: z:fromInteger(0.5)};
+				return FragPos{x:100, y:100, z:0.5};
 			endmethod
 		endinterface
 	endinterface
@@ -44,6 +44,8 @@ endmodule
 
 module mkTransformDivide(SettableTransformAndDivide);
     Reg#(Transform) transform <- mkRegU;
+
+	Reg#(Bool) validTransform <- mkReg(False);
 
     FIFO#(Vec3) inFIFO <- mkFIFO;
     FIFO#(Vec3) midFIFO <- mkFIFO;
@@ -75,30 +77,47 @@ module mkTransformDivide(SettableTransformAndDivide);
         x = -x / z;
         y = -y / z;
         z = -1 / z;
-
         return Vec3{x:x, y:y, z:z};
     endfunction
 
     function FragPos mapToIntegers(Vec3 v);
     	Fractional half;
-    	Bit#(12) numpix = fromInteger(valueOf(NUM_PIXELS));
-    	Bit#(16) bit_half = {numpix>>1,'0};
+    	Bit#(16) numpix = fromInteger(valueOf(NUM_PIXELS));
+    	Bit#(16) bit_half = numpix>>1;
     	half.i = bit_half[15:8];
     	half.f = bit_half[7:0];
     	Fractional halfx = v.x * half;
     	Fractional halfy = v.y * half;
-    	Bit#(12) ix = extend(half.i) + extend(halfx.i);
-    	Bit#(12) iy = extend(half.i) - extend(halfy.i);
-    	//Bit#(10) tx = truncate(pack(ix));
-    	//Bit#(10) ty = truncate(pack(iy));
-        PixCoord x = truncate(unpack(ix));
-        PixCoord y = truncate(unpack(iy));
+    	Bit#(16) xi = pack(halfx);
+    	Bit#(16) yi = pack(halfy);
+    	Bit#(16) ix = bit_half + xi;
+    	Bit#(16) iy = bit_half - yi;
+    	
+    	Bit#(10) bx = truncate(ix);
+    	Bit#(10) by = truncate(iy);
+        PixCoord x = unpack(bx);
+        PixCoord y = unpack(by);
+        
+        if (ix[15:10] != 0 || iy[15:10] != 0) begin
+    		x = 0;
+    		y = 0;
+    	end
+        
         return FragPos{x:x, y:y, z:v.z};
     endfunction
 
     // Rules
-    rule transformRule;
-        midFIFO.enq(transformAndDivide(inFIFO.first));
+    rule transformRule if (validTransform);
+    	let t = transformAndDivide(inFIFO.first);
+    	
+    	$write("HW: transformAndDivide before: ");
+    	fxptWrite(3,inFIFO.first.x); $write(" ");
+    	fxptWrite(3,inFIFO.first.y); $display(" ");
+    	$write("HW: transformAndDivide after: ");
+    	fxptWrite(3,t.x); $write(" ");
+    	fxptWrite(3,t.y); $display(" ");
+    	
+        midFIFO.enq(t);
         inFIFO.deq();
     endrule
 
@@ -107,7 +126,29 @@ module mkTransformDivide(SettableTransformAndDivide);
         midFIFO.deq();
     endrule
 
-    interface setTransform = toPut(asReg(transform));
+    interface Put setTransform;
+    	method Action put(Transform t);
+    		validTransform <= True;
+    		$display("Transform :");
+    		$write("row 1: ");
+    		fxptWrite(3,t.m.xx); $write(" ");
+    		fxptWrite(3,t.m.xy); $write(" ");
+    		fxptWrite(3,t.m.xz); $display(" ");
+    		$write("row 2: ");
+    		fxptWrite(3,t.m.yx); $write(" ");
+    		fxptWrite(3,t.m.yy); $write(" ");
+    		fxptWrite(3,t.m.yz); $display(" ");
+    		$write("row 3: ");
+    		fxptWrite(3,t.m.zx); $write(" ");
+    		fxptWrite(3,t.m.zy); $write(" ");
+    		fxptWrite(3,t.m.zz); $display(" ");
+    		$write("pos: ");
+    		fxptWrite(3,t.pos.x); $write(" ");
+    		fxptWrite(3,t.pos.y); $write(" ");
+    		fxptWrite(3,t.pos.z); $display(" ");
+    		transform <= t;
+    	endmethod
+    endinterface
     interface TransformAndDivide doTransform;
         interface request = toPut(inFIFO);
         interface response = toGet(outFIFO);

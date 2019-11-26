@@ -1,7 +1,8 @@
 CONNECTALDIR ?= /mit/6.375/lab2019f/connectal
 S2H_INTERFACES = \
 	TransformReq:PipeLine.setTransform \
-	TriangleReq:PipeLine.inputTriangles
+	TriangleReq:PipeLine.inputTriangles \
+	StopReq:PipeLine.stopRunning
 H2S_INTERFACES= \
 	PipeLine:PipeLineIndication
 BSVFILES += \

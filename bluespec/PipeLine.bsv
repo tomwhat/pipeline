@@ -11,16 +11,14 @@ import XiaoLinWu::*;
 interface PipeLine;
     interface TransformReq setTransform;
     interface TriangleReq inputTriangles;
+    interface StopReq stopRunning;
 endinterface
 
 module mkPipeLine#(PipeLineIndication indication)(PipeLine);
-    // TB: When you will want to send a triangle back to the cpp,
-    // You do indication.callbackFrag(yourFrag)
-
     FIFO#(Triangle) fifoTriIn <- mkFIFO;
     FIFO#(Frag) fifoFragOut <- mkFIFO;
-    SettableTransformAndDivide transf <- mkFakeTransformDivide;
-    XiaoLinWu xlw <- mkFakeXiaoLinWu;
+    SettableTransformAndDivide transf <- mkTransformDivide;
+    XiaoLinWu xlw <- mkXiaoLinWu;
 
     // Some state for in_to_tr
     Reg#(Vec3) bufferA <- mkRegU;
@@ -34,6 +32,7 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
             bufferA <= bufferB;
             validA <= validB;
             validB <= False;
+            $display("HW: in_to_tr -", fshow(bufferA.x), fshow(bufferA.y), fshow(bufferA.z));
         end else begin
             let t = fifoTriIn.first();
             fifoTriIn.deq();
@@ -42,6 +41,7 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
             bufferB <= t.c;
             validA <= True;
             validB <= True;
+            $display("HW: in_to_tr - new triangle -", fshow(t.a.x), fshow(t.a.y), fshow(t.a.z));
         end
     endrule
 
@@ -55,6 +55,7 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
         let fragPos <- transf.doTransform.response.get();
         if (validLastFragPos) begin
             xlw.request.put(tuple2(lastFragPos, fragPos));
+            $display("HW: tr_to_xl");
         end
         lastFragPos <= fragPos;
         validLastFragPos <= True;
@@ -77,16 +78,19 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
             validFragA <= validFragB;
             validFragB <= validFragC;
             validFragC <= False;
+            $display("Frag: x:%d, y:%d", f.pos.x, f.pos.y);
         end else begin
             let fw <- xlw.response.get();
             let f = fw.a;
             indication.callbackFrag(pack(f.pos.x),pack(f.pos.y),pack(f.pos.z),pack(f.intensity));
-            fragBufA <= fw.b;
-            fragBufB <= fw.c;
+            fragBufA <= fw.c;
+            fragBufB <= fw.b;
             fragBufC <= fw.d;
-            validFragA <= True; // first two in wave always valid
-            validFragB <= fw.vc;
+            validFragA <= fw.vc; // first two in wave always valid
+            validFragB <= fw.vb;
             validFragC <= fw.vd;
+            $display("HW: xlw_to_host - new FragWave");
+            $display("Frag: x:%d, y:%d", f.pos.x, f.pos.y);
         end
     endrule
 
@@ -104,6 +108,7 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
 	        Vec3 p = Vec3 {x:unpack(posx), y:unpack(posy), z:unpack(posz)};
 	        Transform t = Transform {m: m, pos: p};
             transf.setTransform.put(t);
+            $display("HW: setting transform");
         endmethod
     endinterface
 
@@ -118,6 +123,14 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
 		    t.c = Vec3{x:unpack(cx), y:unpack(cy), z:unpack(cz)};
 		    t.valid = valid;
 		    fifoTriIn.enq(t);
+		    $display("HW: recieved new triangle");
         endmethod
+    endinterface
+    
+    interface StopReq stopRunning;
+    	method Action stop;
+    		$display("Stopping hardware");
+    		$finish;
+    	endmethod
     endinterface
 endmodule

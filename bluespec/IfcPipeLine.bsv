@@ -18,6 +18,10 @@ interface TriangleReq;
 	Bool valid);
 endinterface
 
+interface StopReq;
+	method Action stop;
+endinterface
+
 // HW to Sw
 interface PipeLineIndication;
     method Action callbackFrag(

@@ -68,6 +68,14 @@ namespace peachy {
     };
 
     Transform<Mat3> toM(Transform<Quat> q);
+    
+    struct fpTrans {
+    	uint16_t x, y, z,
+    			xx, xy, xz,
+    			yx, yy, yz,
+    			zx, zy, zz;
+    	fpTrans(Transform<Mat3> tm);
+    };
 
     struct Camera : Transform<Quat> {
         float near, far, fov;

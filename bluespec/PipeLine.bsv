@@ -46,19 +46,33 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
     endrule
 
     // Some state for tr_to_tr
+    Reg#(FragPos) aFragPos <- mkRegU;
+    Reg#(Bool) validAFragPos <- mkReg(False);
     Reg#(FragPos) lastFragPos <- mkRegU;
     // If we want to draw multiple objects, this should be reset by some method
-    Reg#(Bool) validLastFragPos <- mkReg(False);
+    Reg#(Bit#(3)) triIdx <- mkReg(1);
     // Takes transformed vertices (now as FragPos) and feeds them as lines
     // to the XiaoLinWu algorithm
     rule tr_to_xl;
         let fragPos <- transf.doTransform.response.get();
-        if (validLastFragPos) begin
-            xlw.request.put(tuple2(lastFragPos, fragPos));
-            $display("HW: tr_to_xl");
+        if (triIdx[0] == 1) begin
+        	if (validAFragPos) begin
+        		xlw.request.put(tuple2(lastFragPos, aFragPos));
+        	end
+        	validAFragPos <= True;
+        	aFragPos <= fragPos;
+        end else begin
+        	xlw.request.put(tuple2(lastFragPos, fragPos));
         end
+        triIdx <= {triIdx[1], triIdx[0], triIdx[2]};
         lastFragPos <= fragPos;
-        validLastFragPos <= True;
+    endrule
+    
+    // Runs if there is no new triangle vertices available, but we still
+    // need to draw the third edge of the last triangle
+    rule tr_to_xl_edge (validAFragPos && (triIdx[0] == 1));
+    	xlw.request.put(tuple2(lastFragPos, aFragPos));
+    	validAFragPos <= False;
     endrule
 
     // Some state for xlw_to_host

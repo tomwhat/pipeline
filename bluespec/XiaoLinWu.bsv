@@ -152,10 +152,10 @@ module mkXiaoLinWu(XiaoLinWu);
 
 			Bit#(10) ixdiff = extend(pack(tx1)) - extend(pack(tx0));
 			Bit#(10) iydiff = extend(pack(ty1)) - extend(pack(ty0));
-			Bit#(8) xdiffi = {'0, ixdiff[9:5]};
-			Bit#(8) xdifff = {ixdiff[4:0], '0};
-			Bit#(8) ydiffi = {'0, iydiff[9:5]};
-			Bit#(8) ydifff = {iydiff[4:0], '0};
+			Bit#(8) xdiffi = {'0, ixdiff[9:3]};
+			Bit#(8) xdifff = {ixdiff[2:0], '0};
+			Bit#(8) ydiffi = {'0, iydiff[9:3]};
+			Bit#(8) ydifff = {iydiff[2:0], '0};
 			Fractional xdiff = Fractional{i:xdiffi, f:xdifff};
 			Fractional ydiff = Fractional{i:ydiffi, f:ydifff};
 			Fractional k = ydiff / xdiff;
@@ -205,9 +205,9 @@ module mkXiaoLinWu(XiaoLinWu);
 			y0 <= thisy0;
 			y1 <= thisy1;
 			// Offset or Bit#(14) <= Fractional.i or Bit#(8)
-			Fractional fractMaxVal = Fractional{i:{'0, pack(maxval)[13:8]}, f:pack(maxval)[7:0]};
+			Fractional fractMaxVal = Fractional{i:{'0, pack(maxval)[13:7]}, f:{pack(maxval)[6:0], '0}};
 			Fractional fractky = k * fractMaxVal + 0.5;
-			Offset thisky = unpack({fractky.i[5:0], fractky.f});
+			Offset thisky = unpack({fractky.i[6:0], fractky.f[7:1]});
 			ky <= thisky;
 			kz <= (thisz1 - thisz0) / xdiff;
 			oD <= 0;

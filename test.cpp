@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     // Just create transform and camera
     Quat r = Quat::fromAxis(0.,1.,0.,0.);
     Transform<Quat> t = Transform<Quat>(r, Vec3::origin());
-    t.pos = t.pos + Vec3{0, 0, -4};
+    t.pos = t.pos + Vec3{0, 0, 0};
     Camera c = Camera(1.1, 100, PI/4);
     Transform<Mat3> tm = toM(t);
     Transform<Mat3> ci = c.getFOVCam();
@@ -106,9 +106,9 @@ int main(int argc, char *argv[]) {
     */
     
   	{
-  		Vec3 a = Vec3{-0.05, -0.05, -2};
-  		Vec3 b = Vec3{ 0.05, -0.05, -2};
-  		Vec3 c = Vec3{ 0.0,  0.05, -2};
+  		Vec3 a = Vec3{-0.8, -0.8, -2};
+  		Vec3 b = Vec3{ 0.8, -0.8, -2};
+  		Vec3 c = Vec3{ 0.0,  0.8, -2};
   		fpVec3 fpa = fpVec3(a);
   		fpVec3 fpb = fpVec3(b);
   		fpVec3 fpc = fpVec3(c);

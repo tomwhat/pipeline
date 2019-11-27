@@ -122,11 +122,11 @@ module mkXiaoLinWu(XiaoLinWu);
         // State change
         if (thisx0 > thisx1) begin
             thisBusy = False;
-            $display("HW: XiaoLinWu: line finished, not busy");
+            //$display("HW: XiaoLinWu: line finished, not busy");
         end else begin
         	outFIFO.enq(outwave);
-        	$display("HW: XiaoLinWu: outwave enqueued");
-        	$display("x: %d, y: %d", x0, y0);
+        	//$display("HW: XiaoLinWu: outwave enqueued");
+        	//$display("x: %d, y: %d", x0, y0);
       	end  
         x0 <= thisx0;
         x1 <= thisx1;
@@ -206,13 +206,14 @@ module mkXiaoLinWu(XiaoLinWu);
 			y1 <= thisy1;
 			// Offset or Bit#(14) <= Fractional.i or Bit#(8)
 			Fractional fractMaxVal = Fractional{i:{'0, pack(maxval)[13:7]}, f:{pack(maxval)[6:0], '0}};
-			Fractional fractky = k * fractMaxVal + 0.5;
+			Fractional fractky = k * fractMaxVal;
 			Offset thisky = unpack({fractky.i[6:0], fractky.f[7:1]});
 			ky <= thisky;
 			kz <= (thisz1 - thisz0) / xdiff;
 			oD <= 0;
-			$display("HW: XiaoLinWu: line started, outwave enqueued");
 			/*
+			$display("HW: XiaoLinWu: line started, outwave enqueued");
+			
 			$display("tx0: %d, ty0: %d, tx1: %d, ty1: %d", tx0, ty0, tx1, ty1);
 			$display("ixdiff: %d", ixdiff);
 			$write("xdiff: "); fxptWrite(3, xdiff*32); $display(" ");
@@ -225,6 +226,7 @@ module mkXiaoLinWu(XiaoLinWu);
 			$display("ky: %d", thisky);
 			$display("maxval: %d", maxval);
 			*/
+			
 			outFIFO.enq(outwave);
 	    endmethod
 	endinterface

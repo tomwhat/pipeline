@@ -110,12 +110,12 @@ module mkTransformDivide(SettableTransformAndDivide);
     rule transformRule if (validTransform);
     	let t = transformAndDivide(inFIFO.first);
     	
-    	$write("HW: transformAndDivide before: ");
-    	fxptWrite(3,inFIFO.first.x); $write(" ");
-    	fxptWrite(3,inFIFO.first.y); $display(" ");
-    	$write("HW: transformAndDivide after: ");
-    	fxptWrite(3,t.x); $write(" ");
-    	fxptWrite(3,t.y); $display(" ");
+    	//$write("HW: transformAndDivide before: ");
+    	//fxptWrite(3,inFIFO.first.x); $write(" ");
+    	//fxptWrite(3,inFIFO.first.y); $display(" ");
+    	//$write("HW: transformAndDivide after: ");
+    	//fxptWrite(3,t.x); $write(" ");
+    	//fxptWrite(3,t.y); $display(" ");
     	
         midFIFO.enq(t);
         inFIFO.deq();

@@ -55,8 +55,8 @@ int main(int argc, char *argv[]) {
     // Just create transform and camera
     Quat r = Quat::fromAxis(0.,1.,0.,0.);
     Transform<Quat> t = Transform<Quat>(r, Vec3::origin());
-    t.pos = t.pos + Vec3{0, 0, 0};
-    Camera c = Camera(1.1, 100, PI/4);
+    t.pos = t.pos + Vec3{0, 0, -4};
+    Camera c = Camera(1.1, 100, PI/3);
     Transform<Mat3> tm = toM(t);
     Transform<Mat3> ci = c.getFOVCam();
 
@@ -69,8 +69,7 @@ int main(int argc, char *argv[]) {
     				  fp.xx, fp.xy, fp.xz,
     				  fp.yx, fp.yy, fp.yz,
     				  fp.zx, fp.zy, fp.zz);
-
-	/*
+    				  
     objl::Loader Loader;
     bool loadout = Loader.LoadFile("monkey.obj");
     if (loadout) {
@@ -103,9 +102,8 @@ int main(int argc, char *argv[]) {
     } else {
     	std::cout<<"Failed to load monkey\n";
     }
-    */
     
-  	{
+  	if (false) {
   		Vec3 a = Vec3{-0.8, -0.8, -2};
   		Vec3 b = Vec3{ 0.8, -0.8, -2};
   		Vec3 c = Vec3{ 0.0,  0.8, -2};

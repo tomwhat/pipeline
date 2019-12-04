@@ -1,0 +1,31 @@
+Initial synth results
+
+TransformDivide:
+Gates: 35,103
+Area: 44,518.56 um^2
+Critical-path delay: 6,134.93 ps
+
+XiaoLinWu:
+Gates: 12,540
+Area: 14,886.96 um^2
+Critical-path delay: 4,380.15 ps
+
+
+Build for FPGA:
+
+Lots of timing violations
+
+Worst: transformAndDivide involving inFIFO and midFIFO
+	Requirement: 20 ns
+	Data Path Delay: 45.893 ns
+	
+
+Connectal Main Clock:
+Worst net slack (ns) : -26.168
+Total net slack (ns) : -5928.585
+
+Why is the Total net slack so large? Are there others? Or does the one have some multiplicative effect?
+
+Initially 11 DSP_48 blocks used
+Removed all mults except one from transformAndDivide, went to 3, so there are two others somewhere.
+Well, there are two multiplications in the mapToIntegers function, so it's probably them.

@@ -48,6 +48,15 @@ module mkTransformDivide(SettableTransformAndDivide);
 	Reg#(Bool) validTransform <- mkReg(False);
 
     FIFO#(Vec3) inFIFO <- mkFIFO;
+    FIFO#(Vec3) a_x <- mkFIFO;
+    FIFO#(Vec3) a_y <- mkFIFO;
+    FIFO#(Vec3) a_z <- mkFIFO;
+    FIFO#(Tuple2#(Fractional, Fractional)) b_x <- mkFIFO;
+    FIFO#(Tuple2#(Fractional, Fractional)) b_y <- mkFIFO;
+    FIFO#(Tuple2#(Fractional, Fractional)) b_z <- mkFIFO;
+    FIFO#(Fractional) c_x <- mkFIFO;
+    FIFO#(Fractional) c_y <- mkFIFO;
+    FIFO#(Fractional) c_z <- mkFIFO;
     FIFO#(Vec3) midFIFO <- mkFIFO;
     FIFO#(FragPos) outFIFO <- mkFIFO;
     // This has more combinational logic than anything else so far
@@ -57,6 +66,7 @@ module mkTransformDivide(SettableTransformAndDivide);
     // and additions per cycle, then three parallel divisions
     // in the fourth cycle.
     function Vec3 transformAndDivide(Vec3 v);
+    	/*
         Fractional x =   transform.m.xx * v.x
                         +transform.m.xy * v.y
                         +transform.m.xz * v.z
@@ -69,15 +79,16 @@ module mkTransformDivide(SettableTransformAndDivide);
                         +transform.m.zy * v.y
                         +transform.m.zz * v.z
                         +transform.pos.z;
+        */
         // Divide by zero? I'm kind of stumped by this because
         // a vertex could very well have a z-value of zero and still
         // be a part of a line that makes it to the screen.
         // Maybe clipping should be done before perspective divide?
-        // Just one more thing
-        x = -x / z;
-        y = -y / z;
-        z = -1 / z;
-        return Vec3{x:x, y:y, z:z};
+        // Just one more thing to consider
+        //x = -x / z;
+        //y = -y / z;
+        //z = -1 / z;
+        return Vec3{x:v.y, y:v.y, z:v.z};
     endfunction
 
     function FragPos mapToIntegers(Vec3 v);
@@ -107,19 +118,68 @@ module mkTransformDivide(SettableTransformAndDivide);
     endfunction
 
     // Rules
-    rule transformRule if (validTransform);
-    	let t = transformAndDivide(inFIFO.first);
-    	
-    	//$write("HW: transformAndDivide before: ");
-    	//fxptWrite(3,inFIFO.first.x); $write(" ");
-    	//fxptWrite(3,inFIFO.first.y); $display(" ");
-    	//$write("HW: transformAndDivide after: ");
-    	//fxptWrite(3,t.x); $write(" ");
-    	//fxptWrite(3,t.y); $display(" ");
-    	
-        midFIFO.enq(t);
+    rule in_to_a if (validTransform);
+    	let v = inFIFO.first();
+    	let xx = transform.m.xx * v.x;
+    	let xy = transform.m.xy * v.y;
+    	let xz = transform.m.xz * v.z;
+    	let yx = transform.m.yx * v.x;
+    	let yy = transform.m.yy * v.y;
+    	let yz = transform.m.yz * v.z;
+    	let zx = transform.m.zx * v.x;
+    	let zy = transform.m.zy * v.y;
+    	let zz = transform.m.zz * v.z;
+    	a_x.enq(Vec3{x:xx, y:xy, z:xz});
+    	a_y.enq(Vec3{x:yx, y:yy, z:yz});
+    	a_z.enq(Vec3{x:zx, y:zy, z:zz});
         inFIFO.deq();
     endrule
+    
+    rule a_to_b;
+    	let x = a_x.first();
+    	let y = a_y.first();
+    	let z = a_z.first();
+    	let x_1 = x.x + x.y;
+    	let x_2 = x.z + transform.pos.x;
+    	let y_1 = y.x + y.y;
+    	let y_2 = y.z + transform.pos.y;
+    	let z_1 = z.x + z.y;
+    	let z_2 = z.z + transform.pos.z;
+    	b_x.enq(tuple2(x_1, x_2));
+    	b_y.enq(tuple2(y_1, y_2));
+    	b_z.enq(tuple2(z_1, z_2));
+    	a_x.deq();
+    	a_y.deq();
+    	a_z.deq();
+    endrule
+
+	rule b_to_c;
+		let x = b_x.first();
+		let y = b_y.first();
+		let z = b_z.first();
+		let xc = tpl_1(x) + tpl_2(x);
+		let yc = tpl_1(y) + tpl_2(y);
+		let zc = tpl_1(z) + tpl_2(z);
+		c_x.enq(xc);
+		c_y.enq(yc);
+		c_z.enq(zc);
+		b_x.deq();
+		b_y.deq();
+		b_z.deq();
+	endrule
+	
+	rule c_to_mid;
+		let x = c_x.first();
+		let y = c_y.first();
+		let z = c_z.first();
+		let xm = -x/z;
+		let ym = -y/z;
+		let zm = -1/z;
+		midFIFO.enq(Vec3{x:xm, y:ym, z:zm});
+		c_x.deq();
+		c_y.deq();
+		c_z.deq();
+	endrule
 
     rule discretizeRule;
         outFIFO.enq(mapToIntegers(midFIFO.first));

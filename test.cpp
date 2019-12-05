@@ -53,9 +53,9 @@ int main(int argc, char *argv[]) {
     PipeLineIndication pipelineIndication(IfcNames_PipeLineIndicationH2S);
 
     // Just create transform and camera
-    Quat r = Quat::fromAxis(0.,1.,0.,1.);
+    Quat r = Quat::fromAxis(0.,1.,0.,0.);
     Transform<Quat> t = Transform<Quat>(r, Vec3::origin());
-    t.pos = t.pos + Vec3{0, 0, -4};
+    t.pos = t.pos + Vec3{0, 0., -3};
     Camera c = Camera(1.1, 100, PI/3);
     Transform<Mat3> tm = toM(t);
     Transform<Mat3> ci = c.getFOVCam();
@@ -70,12 +70,12 @@ int main(int argc, char *argv[]) {
     				  fp.yx, fp.yy, fp.yz,
     				  fp.zx, fp.zy, fp.zz);
     				  
-   	if (true) {
+   	if (false) {
 		objl::Loader Loader;
-		bool loadout = Loader.LoadFile("monkey.obj");
+		bool loadout = Loader.LoadFile("donut.obj");
 		std::chrono::high_resolution_clock::time_point st = std::chrono::high_resolution_clock::now();
 		if (loadout) {
-			std::cout<<"Successfully loaded monkey\n";
+			std::cout<<"Successfully loaded donut\n";
 		    for (int i = 0; i < Loader.LoadedMeshes.size(); i++) {
 		        objl::Mesh curMesh = Loader.LoadedMeshes[i];
 		        for (int j = 0; j < curMesh.Indices.size(); j+=3) {
@@ -113,9 +113,9 @@ int main(int argc, char *argv[]) {
 		}
     }
     
-  	if (false) {
-  		Vec3 a = Vec3{ 0.8, -0.8, -2};
-  		Vec3 b = Vec3{-0.8, -0.8, -2};
+  	if (true) {
+  		Vec3 a = Vec3{-0.8, -0.8, -2};
+  		Vec3 b = Vec3{ 0.8, -0.8, -2};
   		Vec3 c = Vec3{ 0.0,  0.8, -2};
   		fpVec3 fpa = fpVec3(a);
   		fpVec3 fpb = fpVec3(b);
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     bool didPrintOnce = false;
     while (true) {
         std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - start;
-        if (t.count() > 5) {
+        if (t.count() > 10) {
         	std::cout<<"should stop\n";
         	stopReq->stop();
         	pipelineIndication.writeBmp();

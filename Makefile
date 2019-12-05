@@ -34,5 +34,5 @@ buildstuff:
 hardware:
 	$(MAKE) -j8 build.vc707g2
 
-swmain: test.cpp peachyPipeline.cpp peachyPerspective.cpp peachyLines.cpp peachyMath.cpp peachyTypes.h
-	g++ -o swmain test.cpp peachyPipeline.cpp peachyPerspective.cpp peachyLines.cpp peachyMath.cpp libraries/libbmp.cpp -Ilibraries
+swmain: swtest.cpp peachyPipeline.cpp peachyPerspective.cpp peachyLines.cpp peachyMath.cpp peachyTypes.h
+	g++ -std=gnu++14 -o swmain swtest.cpp peachyPipeline.cpp peachyPerspective.cpp peachyLines.cpp peachyMath.cpp libraries/libbmp.cpp -Ilibraries

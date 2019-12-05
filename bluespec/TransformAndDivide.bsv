@@ -3,6 +3,7 @@ import FIFO::*;
 import PipeLineTypes::*;
 import ClientServer::*;
 import GetPut::*;
+import Divide::*;
 
 typedef Server#(
     Vec3,
@@ -14,7 +15,7 @@ interface SettableTransformAndDivide;
     interface TransformAndDivide doTransform;
 endinterface
 
-
+/*
 module mkFakeTransformDivide(SettableTransformAndDivide);
 	FIFO#(Bool) dummy <- mkFIFO;
 	
@@ -41,6 +42,7 @@ module mkFakeTransformDivide(SettableTransformAndDivide);
 		endinterface
 	endinterface
 endmodule
+*/
 
 module mkTransformDivide(SettableTransformAndDivide);
     Reg#(Transform) transform <- mkRegU;
@@ -59,6 +61,11 @@ module mkTransformDivide(SettableTransformAndDivide);
     FIFO#(Fractional) c_z <- mkFIFO;
     FIFO#(Vec3) midFIFO <- mkFIFO;
     FIFO#(FragPos) outFIFO <- mkFIFO;
+    
+    Server#(Tuple2#(Int#(32),Int#(16)), Tuple2#(Int#(16),Int#(16))) d1 <- mkSignedDivider(1);
+    Server#(Tuple2#(Int#(32),Int#(16)), Tuple2#(Int#(16),Int#(16))) d2 <- mkSignedDivider(1);
+    Server#(Tuple2#(Int#(32),Int#(16)), Tuple2#(Int#(16),Int#(16))) d3 <- mkSignedDivider(1);
+    
     // This has more combinational logic than anything else so far
     // in the pipeline
     // Without going into making multi-cycle multipliers,
@@ -132,6 +139,7 @@ module mkTransformDivide(SettableTransformAndDivide);
     	a_x.enq(Vec3{x:xx, y:xy, z:xz});
     	a_y.enq(Vec3{x:yx, y:yy, z:yz});
     	a_z.enq(Vec3{x:zx, y:zy, z:zz});
+    	
         inFIFO.deq();
     endrule
     
@@ -168,17 +176,39 @@ module mkTransformDivide(SettableTransformAndDivide);
 		b_z.deq();
 	endrule
 	
-	rule c_to_mid;
+	rule c_to_div;
 		let x = c_x.first();
 		let y = c_y.first();
 		let z = c_z.first();
-		let xm = -x/z;
-		let ym = -y/z;
-		let zm = -1/z;
-		midFIFO.enq(Vec3{x:xm, y:ym, z:zm});
+		Int#(24) x_small = unpack({x.i,x.f,0});
+		Int#(24) y_small = unpack({y.i,y.f,0});
+		Int#(16) z_small = unpack({z.i,z.f});
+		Int#(32) x_big = extend(x_small);
+		Int#(32) y_big = extend(y_small);
+		Int#(32) one_big = 1 << 16;
+		d1.request.put(tuple2(-x_big,z_small));
+		d2.request.put(tuple2(-y_big,z_small));
+		d3.request.put(tuple2(-one_big,z_small));
+		//$write("in: "); fxptWrite(3, x); $write(", "); fxptWrite(3, y); $write(", "); fxptWrite(3, z); $display(" ");
+		//$display("x_big: %b \ny_big: %b \nzsmall: %b",x_big,y_big,z_small);
 		c_x.deq();
 		c_y.deq();
 		c_z.deq();
+	endrule
+	
+	rule div_to_mid;
+		let x <- d1.response.get();
+		let y <- d2.response.get();
+		let z <- d3.response.get();
+		//$display("xback: %b \nyback: %b \nzback: %b",x,y,z);
+		let xp = pack(tpl_1(x));
+		let yp = pack(tpl_1(y));
+		let zp = pack(tpl_1(z));
+		let xf = Fractional{i:xp[15:8],f:xp[7:0]};
+		let yf = Fractional{i:yp[15:8],f:yp[7:0]};
+		let zf = Fractional{i:zp[15:8],f:zp[7:0]};
+		//$write("out: "); fxptWrite(3, xf); $write(", "); fxptWrite(3, yf); $write(", "); fxptWrite(3, zf); $display(" ");
+		midFIFO.enq(Vec3{x:xf,y:yf,z:zf});
 	endrule
 
     rule discretizeRule;

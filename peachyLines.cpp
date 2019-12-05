@@ -66,7 +66,7 @@ namespace peachy {
         auto l = FragPos{x0.val, y0.val, z0};
         auto r = FragPos{x1.val, y1.val, z1};
         auto outs = descramble(l, r);
-        // TODO: based on flipx, flipy, and swaps, do appropriate swaps
+
         outFIFO->push(Frag{outs.first, Intensity::max()});
         outFIFO->push(Frag{outs.second, Intensity::max()});
     }

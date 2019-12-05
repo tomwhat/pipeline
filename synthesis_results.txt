@@ -29,3 +29,7 @@ Why is the Total net slack so large? Are there others? Or does the one have some
 Initially 11 DSP_48 blocks used
 Removed all mults except one from transformAndDivide, went to 3, so there are two others somewhere.
 Well, there are two multiplications in the mapToIntegers function, so it's probably them.
+
+
+
+After lots of changes, including trying to make it use DSP_48 blocks, it's gone down to using only 10 of them!

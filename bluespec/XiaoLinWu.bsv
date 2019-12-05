@@ -3,6 +3,7 @@ import FIFO::*;
 import FixedPoint::*;
 import ClientServer::*;
 import GetPut::*;
+import Divide::*;
 
 typedef struct {
     Frag a;
@@ -134,6 +135,11 @@ module mkXiaoLinWu(XiaoLinWu);
     Reg#(Bool) yflip <- mkRegU;
     Reg#(Bool) swaps <- mkRegU;
     
+    Server#(Tuple2#(Int#(32),Int#(16)), Tuple2#(Int#(16),Int#(16))) d1 <- mkSignedDivider(1);
+    Server#(Tuple2#(Int#(32),Int#(16)), Tuple2#(Int#(16),Int#(16))) d2 <- mkSignedDivider(1);
+    Server#(Tuple2#(Int#(32),Int#(16)), Tuple2#(Int#(16),Int#(16))) d3 <- mkSignedDivider(1);
+    Server#(Tuple2#(Int#(32),Int#(16)), Tuple2#(Int#(16),Int#(16))) d4 <- mkSignedDivider(1);
+    
     function Tuple2#(FragPos, FragPos) descramble(FragPos a, FragPos b,
     											  Bool xf, Bool yf, Bool sw);
         PixCoord tx0 = (sw) ? a.y : a.x;
@@ -166,11 +172,14 @@ module mkXiaoLinWu(XiaoLinWu);
 		yflip <= d2r.yflip;
 		swaps <= d2r.swaps;
 		
-		oD <= d2r.oD + ky;
+		oD <= d2r.oD + d2r.ky;
 		x0 <= b2r.x0 + 1;
 		x1 <= b2r.x1 - 1;
-		z0 <= b2r.z0 + kz;
-		z1 <= b2r.z1 - kz;
+		z0 <= b2r.z0 + b2r.kz;
+		z1 <= b2r.z1 - b2r.kz;
+		
+		$display("ky: %b", d2r.ky);
+		$display("oD: %b", d2r.oD);
 	endrule
 	
 	rule interpolate(is_interpolating);
@@ -182,7 +191,7 @@ module mkXiaoLinWu(XiaoLinWu);
 		end
 		
 		// Intensity is calculated from the current offset value (oD)
-		Intensity intensity = truncate(oD >> (valueOf(N_BITS) - valueOf(M_BITS)));
+		Intensity intensity = truncate(oD >> (valueOf(N_BITS) - valueOf(M_BITS)) );
         Intensity invertedI = ~intensity;
         
         // Left, right, up, down fragments (up is above left, down is below right)
@@ -220,9 +229,14 @@ module mkXiaoLinWu(XiaoLinWu);
 		y1 <= thisy1;
 		z0 <= z0 + kz;
 		z1 <= z1 - kz;
+		$display("FragWave\nx: %d\ny: %d\nx: %d\ny: %d\ni: %b",
+		outwave.a.pos.x,outwave.a.pos.y,outwave.b.pos.x,outwave.b.pos.y,invertedI);
+		$display("x: %d\ny: %d\nx: %d\ny: %d\ni: %b",
+		outwave.c.pos.x,outwave.c.pos.y,outwave.d.pos.x,outwave.d.pos.y,intensity);
+		$display("oD: %d", oD);
 	endrule
     
-    rule a;
+    rule a_to_div;
     	// get input fifo
     	let p = p2aFIFO.first();
     	// dequeue input fifo
@@ -233,8 +247,39 @@ module mkXiaoLinWu(XiaoLinWu);
 		Fractional k_z = p.zdiff / p.xdiff;
 		Fractional k_z_alt = p.zdiff / p.ydiff;
 		
+		// enqueue division
+		Int#(16) x_small = unpack({p.xdiff.i,p.xdiff.f});
+		Int#(16) y_small = unpack({p.ydiff.i,p.ydiff.f});
+		Int#(24) x_medium = unpack({pack(x_small),0});
+		Int#(24) y_medium = unpack({pack(y_small),0});
+		Int#(24) z_medium = unpack({p.zdiff.i,p.zdiff.f,0});
+		Int#(32) x_big = extend(x_medium);
+		Int#(32) y_big = extend(y_medium);
+		Int#(32) z_big = extend(z_medium);
+		d1.request.put(tuple2(y_big,x_small));
+		d2.request.put(tuple2(x_big,y_small));
+		d3.request.put(tuple2(z_big,x_small));
+		d4.request.put(tuple2(z_big,y_small));
+		
 		// enque output fifo
 		a2bFIFO.enq(A2B{k:k,k_inverse:inverseK,kz:k_z,kz_alt:k_z_alt});
+		$display("xdiff: %b \nydiff: %b", p.xdiff, p.ydiff);
+    endrule
+    
+    rule div_to_b;
+    	let r1 <- d1.response.get();
+    	let r2 <- d2.response.get();
+    	let r3 <- d3.response.get();
+    	let r4 <- d4.response.get();
+    	let p1 = pack(tpl_1(r1));
+    	let p2 = pack(tpl_1(r2));
+    	let p3 = pack(tpl_1(r3));
+    	let p4 = pack(tpl_1(r4));
+    	let k 		 = Fractional{i:p1[15:8],f:p1[7:0]};
+    	let inverseK = Fractional{i:p2[15:8],f:p2[7:0]};
+    	let k_z 	 = Fractional{i:p3[15:8],f:p3[7:0]};
+    	let k_z_alt  = Fractional{i:p4[15:8],f:p4[7:0]};
+    	a2bFIFO.enq(A2B{k:k,k_inverse:inverseK,kz:k_z,kz_alt:k_z_alt});
     endrule
     
     rule b;
@@ -314,6 +359,8 @@ module mkXiaoLinWu(XiaoLinWu);
 		
 		// enqueue to interpolation stage
 		d2rFIFO.enq(D2R{ky:thisky,oD:0,xflip:in_xflip,yflip:in_yflip,swaps:in_swaps});
+		$display("First frags:\nx: %d\ny: %d\nx: %d\ny: %d\n",outwave.a.pos.x,outwave.a.pos.y,
+				 outwave.b.pos.x, outwave.b.pos.y);
     endrule
 
 	interface Put request;
@@ -344,6 +391,8 @@ module mkXiaoLinWu(XiaoLinWu);
 			p2bFIFO.enq(P2B{x0:tx0,x1:tx1,y0:ty0,y1:ty1,z0:a.z,z1:b.z});
 			p2aFIFO.enq(P2A{xdiff:xdiff,ydiff:ydiff,zdiff:zdiff});
 			p2dFIFO.enq(P2D{xflip:xf, yflip:yf});
+			
+			$display("x0: %d\ny0: %d\nx1: %d\ny1: %d\n",tx0,ty0,tx1,ty1);
 	    endmethod
 	endinterface
 	

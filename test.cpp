@@ -53,9 +53,9 @@ int main(int argc, char *argv[]) {
     PipeLineIndication pipelineIndication(IfcNames_PipeLineIndicationH2S);
 
     // Just create transform and camera
-    Quat r = Quat::fromAxis(0.,1.,0.,0.);
+    Quat r = Quat::fromAxis(1.,0.,0.,0.);
     Transform<Quat> t = Transform<Quat>(r, Vec3::origin());
-    t.pos = t.pos + Vec3{0, 0., -3};
+    t.pos = t.pos + Vec3{0, 0., 0.};
     Camera c = Camera(1.1, 100, PI/3);
     Transform<Mat3> tm = toM(t);
     Transform<Mat3> ci = c.getFOVCam();
@@ -70,12 +70,12 @@ int main(int argc, char *argv[]) {
     				  fp.yx, fp.yy, fp.yz,
     				  fp.zx, fp.zy, fp.zz);
     				  
-   	if (false) {
+   	if (true) {
 		objl::Loader Loader;
-		bool loadout = Loader.LoadFile("donut.obj");
+		bool loadout = Loader.LoadFile("path.obj");
 		std::chrono::high_resolution_clock::time_point st = std::chrono::high_resolution_clock::now();
 		if (loadout) {
-			std::cout<<"Successfully loaded donut\n";
+			std::cout<<"Successfully loaded path\n";
 		    for (int i = 0; i < Loader.LoadedMeshes.size(); i++) {
 		        objl::Mesh curMesh = Loader.LoadedMeshes[i];
 		        for (int j = 0; j < curMesh.Indices.size(); j+=3) {
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 		                             true);
 		            while (true) {
 		            	std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - st;
-		            	if (t.count() > 0.01) {
+		            	if (t.count() > 0.001) {
 		            		st = std::chrono::high_resolution_clock::now();
 		            		break;
 		            	}
@@ -109,11 +109,11 @@ int main(int argc, char *argv[]) {
 		        }
 		    }
 		} else {
-			std::cout<<"Failed to load monkey\n";
+			std::cout<<"Failed to load path\n";
 		}
     }
     
-  	if (true) {
+  	if (false) {
   		Vec3 a = Vec3{-0.8, -0.8, -2};
   		Vec3 b = Vec3{ 0.8, -0.8, -2};
   		Vec3 c = Vec3{ 0.0,  0.8, -2};
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     bool didPrintOnce = false;
     while (true) {
         std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - start;
-        if (t.count() > 10) {
+        if (t.count() > 5) {
         	std::cout<<"should stop\n";
         	stopReq->stop();
         	pipelineIndication.writeBmp();

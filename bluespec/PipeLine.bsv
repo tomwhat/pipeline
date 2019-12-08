@@ -57,12 +57,14 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
         let fragPos <- transf.doTransform.response.get();
         if (triIdx[0] == 1) begin
         	if (validAFragPos) begin
-        		xlw.request.put(tuple2(lastFragPos, aFragPos));
+        		if (lastFragPos.x != 0 && lastFragPos.y != 0 && aFragPos.x != 0 && aFragPos.y != 0)
+        			xlw.request.put(tuple2(lastFragPos, aFragPos));
         	end
         	validAFragPos <= True;
         	aFragPos <= fragPos;
         end else begin
-        	xlw.request.put(tuple2(lastFragPos, fragPos));
+        	if (lastFragPos.x != 0 && lastFragPos.y != 0 && fragPos.x != 0 && fragPos.y != 0)
+        		xlw.request.put(tuple2(lastFragPos, fragPos));
         end
         triIdx <= {triIdx[1], triIdx[0], triIdx[2]};
         lastFragPos <= fragPos;

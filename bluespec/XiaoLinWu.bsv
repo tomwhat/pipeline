@@ -49,6 +49,7 @@ typedef struct {
 	PixCoord y1;
 	Fractional z0;
 	Fractional z1;
+	Bool swap;
 } P2B deriving(Bits);
 
 typedef struct {
@@ -241,11 +242,6 @@ module mkXiaoLinWu(XiaoLinWu);
     	let p = p2aFIFO.first();
     	// dequeue input fifo
 		p2aFIFO.deq();
-    	// Division
-		Fractional k = p.ydiff / p.xdiff;
-		Fractional inverseK = p.xdiff / p.ydiff;
-		Fractional k_z = p.zdiff / p.xdiff;
-		Fractional k_z_alt = p.zdiff / p.ydiff;
 		
 		// enqueue division
 		Int#(16) x_small = unpack({p.xdiff.i,p.xdiff.f});
@@ -260,10 +256,6 @@ module mkXiaoLinWu(XiaoLinWu);
 		d2.request.put(tuple2(x_big,y_small));
 		d3.request.put(tuple2(z_big,x_small));
 		d4.request.put(tuple2(z_big,y_small));
-		
-		// enque output fifo
-		a2bFIFO.enq(A2B{k:k,k_inverse:inverseK,kz:k_z,kz_alt:k_z_alt});
-		$display("xdiff: %b \nydiff: %b", p.xdiff, p.ydiff);
     endrule
     
     rule div_to_b;
@@ -290,7 +282,8 @@ module mkXiaoLinWu(XiaoLinWu);
     	a2bFIFO.deq();
 		p2bFIFO.deq();
     	
-		let thisSwaps = (a2b.k > 1.0);
+		//let thisSwaps = (a2b.k > 1.0);
+		let thisSwaps = p2b.swap;
 		let thisx0 = (thisSwaps) ? p2b.y0 : p2b.x0;
 		let thisx1 = (thisSwaps) ? p2b.y1 : p2b.x1;
 		let thisy0 = (thisSwaps) ? p2b.x0 : p2b.y0;
@@ -387,8 +380,11 @@ module mkXiaoLinWu(XiaoLinWu);
 			Fractional ydiff = Fractional{i:ydiff_integer, f:ydiff_fraction}; // move
 			Fractional zdiff = b.z - a.z; // move
 			
+			//test
+			Bool mSwaps = ydiff > xdiff;
+			
 			// Give data to next steps of line initialization
-			p2bFIFO.enq(P2B{x0:tx0,x1:tx1,y0:ty0,y1:ty1,z0:a.z,z1:b.z});
+			p2bFIFO.enq(P2B{x0:tx0,x1:tx1,y0:ty0,y1:ty1,z0:a.z,z1:b.z,swap:mSwaps});
 			p2aFIFO.enq(P2A{xdiff:xdiff,ydiff:ydiff,zdiff:zdiff});
 			p2dFIFO.enq(P2D{xflip:xf, yflip:yf});
 			

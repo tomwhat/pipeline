@@ -53,9 +53,9 @@ int main(int argc, char *argv[]) {
     PipeLineIndication pipelineIndication(IfcNames_PipeLineIndicationH2S);
 
     // Just create transform and camera
-    Quat r = Quat::fromAxis(1.,0.,0.,0.);
+    Quat r = Quat::fromAxis(1.,0.,0.,1.57);
     Transform<Quat> t = Transform<Quat>(r, Vec3::origin());
-    t.pos = t.pos + Vec3{0, 0., 0.};
+    t.pos = t.pos + Vec3{0, 0., -8.};
     Camera c = Camera(1.1, 100, PI/3);
     Transform<Mat3> tm = toM(t);
     Transform<Mat3> ci = c.getFOVCam();
@@ -99,34 +99,33 @@ int main(int argc, char *argv[]) {
 		                             fpv.x, fpv.y, fpv.z,
 		                             fpw.x, fpw.y, fpw.z,
 		                             true);
-		            while (true) {
-		            	std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - st;
-		            	if (t.count() > 0.001) {
-		            		st = std::chrono::high_resolution_clock::now();
-		            		break;
-		            	}
-		            }
 		        }
 		    }
 		} else {
 			std::cout<<"Failed to load path\n";
 		}
     }
-    
   	if (false) {
-  		Vec3 a = Vec3{-0.8, -0.8, -2};
-  		Vec3 b = Vec3{ 0.8, -0.8, -2};
-  		Vec3 c = Vec3{ 0.0,  0.8, -2};
-  		fpVec3 fpa = fpVec3(a);
-  		fpVec3 fpb = fpVec3(b);
-  		fpVec3 fpc = fpVec3(c);
-  		triangleReq->enq(fpa.x, fpa.y, fpa.z,
-  						 fpb.x, fpb.y, fpb.z,
-  						 fpc.x, fpc.y, fpc.z, true);
-  	}  
+	  	float amt = 10.0;
+	  	float jot = 0.02;
+	  	for (int i = -amt; i < amt + 1.0; i++) {
+	  		for (int j = -amt; j < amt + 1.0; j++) {
+	  			float tx = i / amt;
+	  			float ty = j / amt;
+	  			Vec3 a = Vec3{tx-jot,ty-jot,0.0};
+	  			Vec3 b = Vec3{tx+jot,ty-jot,0.0};
+	  			Vec3 c = Vec3{tx,ty+jot,0.0};
+	  			fpVec3 fpa = fpVec3(a);
+	  			fpVec3 fpb = fpVec3(b);
+	  			fpVec3 fpc = fpVec3(c);
+	  			triangleReq->enq(fpa.x, fpa.y, fpa.z,
+	  					 		 fpb.x, fpb.y, fpb.z,
+	  					 		 fpc.x, fpc.y, fpc.z, true);
+	  		}
+	  	}
+  	} 
   	
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-    bool didPrintOnce = false;
     while (true) {
         std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - start;
         if (t.count() > 5) {
@@ -134,11 +133,6 @@ int main(int argc, char *argv[]) {
         	stopReq->stop();
         	pipelineIndication.writeBmp();
             break;
-        } else {
-            if (!didPrintOnce) {
-                std::cout<<"time: "<<t.count()<<"\n";
-                didPrintOnce = true;
-            }
         }
     }
     

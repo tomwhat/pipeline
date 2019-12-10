@@ -27,7 +27,6 @@ module mkFakeXiaoLinWu(XiaoLinWu);
 
 	interface Put request;
 		method Action put(Tuple2#(FragPos, FragPos) tup);
-			$display("xlw put");
 			dummy.enq(tup);
 		endmethod
 	endinterface
@@ -178,9 +177,6 @@ module mkXiaoLinWu(XiaoLinWu);
 		x1 <= b2r.x1 - 1;
 		z0 <= b2r.z0 + b2r.kz;
 		z1 <= b2r.z1 - b2r.kz;
-		
-		$display("ky: %b", d2r.ky);
-		$display("oD: %b", d2r.oD);
 	endrule
 	
 	rule interpolate(is_interpolating);
@@ -230,11 +226,6 @@ module mkXiaoLinWu(XiaoLinWu);
 		y1 <= thisy1;
 		z0 <= z0 + kz;
 		z1 <= z1 - kz;
-		$display("FragWave\nx: %d\ny: %d\nx: %d\ny: %d\ni: %b",
-		outwave.a.pos.x,outwave.a.pos.y,outwave.b.pos.x,outwave.b.pos.y,invertedI);
-		$display("x: %d\ny: %d\nx: %d\ny: %d\ni: %b",
-		outwave.c.pos.x,outwave.c.pos.y,outwave.d.pos.x,outwave.d.pos.y,intensity);
-		$display("oD: %d", oD);
 	endrule
     
     rule a_to_div;
@@ -352,21 +343,19 @@ module mkXiaoLinWu(XiaoLinWu);
 		
 		// enqueue to interpolation stage
 		d2rFIFO.enq(D2R{ky:thisky,oD:0,xflip:in_xflip,yflip:in_yflip,swaps:in_swaps});
-		$display("First frags:\nx: %d\ny: %d\nx: %d\ny: %d\n",outwave.a.pos.x,outwave.a.pos.y,
-				 outwave.b.pos.x, outwave.b.pos.y);
     endrule
 
 	interface Put request;
 	    method Action put(Tuple2#(FragPos, FragPos) tup);
-	    	let a = tpl_1(tup); // move
-	    	let b = tpl_2(tup); // move
+	    	let a = tpl_1(tup); // pipeline
+	    	let b = tpl_2(tup); // pipeline
 			let xf = (a.x > b.x);
 			let yf = (a.y > b.y);
 	
-			let tx0 = (xf) ? b.x : a.x; // move
-			let tx1 = (xf) ? a.x : b.x; // move
-			let ty0 = (yf) ? b.y : a.y; // move
-			let ty1 = (yf) ? a.y : b.y; // move
+			let tx0 = (xf) ? b.x : a.x; // pipeline
+			let tx1 = (xf) ? a.x : b.x; // pipeline
+			let ty0 = (yf) ? b.y : a.y; // pipeline
+			let ty1 = (yf) ? a.y : b.y; // pipeline
 
 			// Subtraction
 			Bit#(10) xdiff_ten = extend(pack(tx1)) - extend(pack(tx0));
@@ -376,9 +365,9 @@ module mkXiaoLinWu(XiaoLinWu);
 			Bit#(8) xdiff_fraction = {xdiff_ten[2:0], '0};
 			Bit#(8) ydiff_integer = {'0, ydiff_ten[9:3]};
 			Bit#(8) ydiff_fraction = {ydiff_ten[2:0], '0};
-			Fractional xdiff = Fractional{i:xdiff_integer, f:xdiff_fraction}; // move
-			Fractional ydiff = Fractional{i:ydiff_integer, f:ydiff_fraction}; // move
-			Fractional zdiff = b.z - a.z; // move
+			Fractional xdiff = Fractional{i:xdiff_integer, f:xdiff_fraction}; // pipeline
+			Fractional ydiff = Fractional{i:ydiff_integer, f:ydiff_fraction}; // pipeline
+			Fractional zdiff = b.z - a.z; // pipeline
 			
 			//test
 			Bool mSwaps = ydiff > xdiff;
@@ -387,8 +376,6 @@ module mkXiaoLinWu(XiaoLinWu);
 			p2bFIFO.enq(P2B{x0:tx0,x1:tx1,y0:ty0,y1:ty1,z0:a.z,z1:b.z,swap:mSwaps});
 			p2aFIFO.enq(P2A{xdiff:xdiff,ydiff:ydiff,zdiff:zdiff});
 			p2dFIFO.enq(P2D{xflip:xf, yflip:yf});
-			
-			$display("x0: %d\ny0: %d\nx1: %d\ny1: %d\n",tx0,ty0,tx1,ty1);
 	    endmethod
 	endinterface
 	

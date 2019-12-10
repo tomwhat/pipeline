@@ -41,13 +41,17 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
             bufferB <= t.c;
             validA <= True;
             validB <= True;
-            //$display("HW: in_to_tr - new triangle -", fshow(t.a.x), fshow(t.a.y), fshow(t.a.z));
+            //$display("HW: in_to_tr - new triangle: ");
+            //fxptWrite(3,t.a.x); $write(" "); fxptWrite(3,t.a.y); $write(" "); fxptWrite(3,t.a.z); $write("\n");
+            //fxptWrite(3,t.b.x); $write(" "); fxptWrite(3,t.b.y); $write(" "); fxptWrite(3,t.b.z); $write("\n");
+            //fxptWrite(3,t.c.x); $write(" "); fxptWrite(3,t.c.y); $write(" "); fxptWrite(3,t.c.z); $write("\n");
         end
     endrule
-
+	/*
     // Some state for tr_to_tr
     Reg#(FragPos) aFragPos <- mkRegU;
     Reg#(Bool) validAFragPos <- mkReg(False);
+    Reg#(Bool) validLastFragPos <- mkReg(False);
     Reg#(FragPos) lastFragPos <- mkRegU;
     // If we want to draw multiple objects, this should be reset by some method
     Reg#(Bit#(3)) triIdx <- mkReg(1);
@@ -63,19 +67,34 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
         	validAFragPos <= True;
         	aFragPos <= fragPos;
         end else begin
-        	if (lastFragPos.x != 0 && lastFragPos.y != 0 && fragPos.x != 0 && fragPos.y != 0)
+        	if (validLastFragPos && lastFragPos.x != 0 && lastFragPos.y != 0 && fragPos.x != 0 && fragPos.y != 0)
         		xlw.request.put(tuple2(lastFragPos, fragPos));
         end
         triIdx <= {triIdx[1], triIdx[0], triIdx[2]};
         lastFragPos <= fragPos;
+        validLastFragPos <= True;
     endrule
-    
+    */
     // Runs if there is no new triangle vertices available, but we still
     // need to draw the third edge of the last triangle
+    /*
     rule tr_to_xl_edge (validAFragPos && (triIdx[0] == 1));
     	xlw.request.put(tuple2(lastFragPos, aFragPos));
     	validAFragPos <= False;
+    	$display("tr_to_xl_edge ran");
     endrule
+    */
+    
+    
+    rule just_points;
+    	let fragPos <- transf.doTransform.response.get();
+    	FragPos ofp = FragPos{x:fragPos.x+1,y:fragPos.y+1,z:fragPos.z};
+    	xlw.request.put(tuple2(fragPos, ofp));
+    	//$display("Point at %d, %d", fragPos.x, fragPos.y);
+    	if (fragPos.x == 0)
+    		$display("no good's afoot");
+    endrule
+    
 
     // Some state for xlw_to_host
     Reg#(Frag) fragBufA <- mkRegU;
@@ -94,16 +113,15 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
             validFragA <= validFragB;
             validFragB <= validFragC;
             validFragC <= False;
-            //$display("Frag: x:%d, y:%d", f.pos.x, f.pos.y);
         end else begin
             let fw <- xlw.response.get();
             let f = fw.a;
             indication.callbackFrag(pack(f.pos.x),pack(f.pos.y),pack(f.pos.z),pack(f.intensity));
-            fragBufA <= fw.c;
-            fragBufB <= fw.b;
+            fragBufA <= fw.b;
+            fragBufB <= fw.c;
             fragBufC <= fw.d;
-            validFragA <= fw.vc; // first two in wave always valid
-            validFragB <= fw.vb;
+            validFragA <= fw.vb; // first two in wave always valid
+            validFragB <= fw.vc;
             validFragC <= fw.vd;
             //$display("HW: xlw_to_host - new FragWave");
             //$display("Frag: x:%d, y:%d", f.pos.x, f.pos.y);

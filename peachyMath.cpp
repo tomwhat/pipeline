@@ -12,8 +12,13 @@ uint16_t fl_to_fp(float f) {
 	uint16_t lower;
 	uint16_t upper;
 	fractpart = modff(f, &intpart);
-	lower = (uint16_t)(fractpart * 256.0f);
-	upper = (uint16_t)(int)(intpart);
+	if (intpart < 0) {
+		lower = (uint16_t)((1.0+fractpart) * 256.0f);
+		upper = (uint16_t)(int)(intpart - 1.0f);
+	} else {
+		lower = (uint16_t)(fractpart * 256.0f);
+		upper = (uint16_t)(int)(intpart);
+	}
 	upper = upper << 8;
 	return upper | lower;
 }
@@ -50,27 +55,9 @@ namespace peachy {
     }
 
     fpVec3::fpVec3(Vec3 v) {
-        float intpart;
-        float fractpart;
-        uint16_t lower;
-        uint16_t upper;
-        fractpart = modff(v.x, &intpart);
-        lower = (uint16_t)(fractpart * 256.0f);
-        upper = (uint16_t)(int)(intpart);
-        upper = upper << 8;
-        x = lower | upper;
-        
-        fractpart = modff(v.y, &intpart);
-        lower = (uint16_t)(fractpart * 256.0f);
-        upper = (uint16_t)(int)(intpart);
-        upper = upper << 8;
-        y = lower | upper;
-
-        fractpart = modff(v.z, &intpart);
-        lower = (uint16_t)(fractpart * 256.0f);
-        upper = (uint16_t)(int)(intpart);
-        upper = upper << 8;
-        z = lower | upper;
+        x = fl_to_fp(v.x);
+        y = fl_to_fp(v.y);
+        z = fl_to_fp(v.z);
     }
     // Quaternion
     // Create identity quaternion

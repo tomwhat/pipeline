@@ -14,6 +14,7 @@
 #include "TransformReq.h"
 #include "TriangleReq.h"
 #include "StopReq.h"
+#include "KillReq.h"
 
 #include "PipeLineIndication.h"
 
@@ -22,6 +23,9 @@ using namespace peachy;
 static TransformReqProxy *transformReq = 0;
 static TriangleReqProxy *triangleReq = 0;
 static StopReqProxy *stopReq = 0;
+static KillReqProxy *killReq = 0;
+
+static volatile bool allDone = false;
 
 
 class PipeLineIndication: public PipeLineIndicationWrapper
@@ -33,6 +37,13 @@ class PipeLineIndication: public PipeLineIndicationWrapper
         int i = (int) f;
         img->set_pixel(fposx, fposy, i, i / 2, i);
     }
+    
+    void confirmStop(const uint16_t x) {
+    	std::cout<<"confirm stop\n";
+		img->write("out.bmp");
+		allDone = true;
+	}
+	
     PipeLineIndication(unsigned int id) : PipeLineIndicationWrapper(id) {
         img = new BmpImg(1024, 1024);
     }
@@ -50,12 +61,13 @@ int main(int argc, char *argv[]) {
     transformReq = new TransformReqProxy(IfcNames_TransformReqS2H);
     triangleReq = new TriangleReqProxy(IfcNames_TriangleReqS2H);
     stopReq = new StopReqProxy(IfcNames_StopReqS2H);
+    killReq = new KillReqProxy(IfcNames_StopReqS2H);
     PipeLineIndication pipelineIndication(IfcNames_PipeLineIndicationH2S);
 
     // Just create transform and camera
-    Quat r = Quat::fromAxis(1.,0.,0.,1.57);
+    Quat r = Quat::fromAxis(1.,0.,0.,0.);
     Transform<Quat> t = Transform<Quat>(r, Vec3::origin());
-    t.pos = t.pos + Vec3{0, 0., -8.};
+    t.pos = t.pos + Vec3{0, 0., -2.};
     Camera c = Camera(1.1, 100, PI/3);
     Transform<Mat3> tm = toM(t);
     Transform<Mat3> ci = c.getFOVCam();
@@ -70,7 +82,7 @@ int main(int argc, char *argv[]) {
     				  fp.yx, fp.yy, fp.yz,
     				  fp.zx, fp.zy, fp.zz);
     				  
-   	if (true) {
+   	if (false) {
 		objl::Loader Loader;
 		bool loadout = Loader.LoadFile("path.obj");
 		std::chrono::high_resolution_clock::time_point st = std::chrono::high_resolution_clock::now();
@@ -99,6 +111,13 @@ int main(int argc, char *argv[]) {
 		                             fpv.x, fpv.y, fpv.z,
 		                             fpw.x, fpw.y, fpw.z,
 		                             true);
+		            std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+		            while (true) {
+						std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - start;
+						if (t.count() > 0.001) {
+							break;
+        				}
+    				}
 		        }
 		    }
 		} else {
@@ -106,12 +125,12 @@ int main(int argc, char *argv[]) {
 		}
     }
   	if (false) {
-	  	float amt = 10.0;
+	  	float amt = 20.0;
 	  	float jot = 0.02;
 	  	for (int i = -amt; i < amt + 1.0; i++) {
 	  		for (int j = -amt; j < amt + 1.0; j++) {
-	  			float tx = i / amt;
-	  			float ty = j / amt;
+	  			float tx = 1.3*i / amt;
+	  			float ty = 1.3*j / amt;
 	  			Vec3 a = Vec3{tx-jot,ty-jot,0.0};
 	  			Vec3 b = Vec3{tx+jot,ty-jot,0.0};
 	  			Vec3 c = Vec3{tx,ty+jot,0.0};
@@ -123,20 +142,44 @@ int main(int argc, char *argv[]) {
 	  					 		 fpc.x, fpc.y, fpc.z, true);
 	  		}
 	  	}
-  	} 
+  	}
   	
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-    while (true) {
-        std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - start;
-        if (t.count() > 5) {
-        	std::cout<<"should stop\n";
-        	stopReq->stop();
-        	pipelineIndication.writeBmp();
-            break;
-        }
-    }
-    
-    std::cout<<"Finished\n";
+  	if (true) {
+  		float amt = 30.0;
+  		for (int i = 0; i < amt + 1.0; i++) {
+  			float tx = 3.0*i / amt - 1.5;
+  			Vec3 a = Vec3{-1.5, -1.5, 0.0};
+  			Vec3 b = Vec3{ 1.5, -1.5, 0.0};
+  			Vec3 c = Vec3{ 1.5,   tx, 0.0};
+  			fpVec3 fpa = fpVec3(a);
+  			fpVec3 fpb = fpVec3(b);
+  			fpVec3 fpc = fpVec3(c);
+  			triangleReq->enq(fpa.x, fpa.y, fpa.z,
+  					 		 fpb.x, fpb.y, fpb.z,
+  					 		 fpc.x, fpc.y, fpc.z, true);
+  		}
+  	}
+  	
+  	if (false) {
+		Vec3 a = Vec3{-1.5, -1.5, 0.0};
+		Vec3 b = Vec3{ 1.5,  1.5, 0.0};
+		Vec3 c = Vec3{ 1.5, -1.5, 0.0};
+		fpVec3 fpa = fpVec3(a);
+		fpVec3 fpb = fpVec3(b);
+		fpVec3 fpc = fpVec3(c);
+		triangleReq->enq(fpa.x, fpa.y, fpa.z,
+				 		 fpb.x, fpb.y, fpb.z,
+				 		 fpc.x, fpc.y, fpc.z, true);
+  	}
+  	
 
+    triangleReq->enq(0,0,0,0,0,0,0,0,0,false);
+    triangleReq->enq(0,0,0,0,0,0,0,0,0,false);
+    stopReq->stop();
+
+	while(!allDone) {
+	
+	}
+	killReq->kill();
     return 0;
 }

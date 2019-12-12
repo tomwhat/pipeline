@@ -22,6 +22,10 @@ interface StopReq;
 	method Action stop;
 endinterface
 
+interface KillReq;
+	method Action kill;
+endinterface
+
 // HW to Sw
 interface PipeLineIndication;
     method Action callbackFrag(
@@ -29,18 +33,6 @@ interface PipeLineIndication;
 	Bit#(10) fposy,
 	Bit#(16) fposz,
 	Bit#(4) fintensity);
+	
+	method Action confirmStop(Bit#(16) x);
 endinterface
-
-// TB: There are limitations in Connectal for the width of the argument being sent. Recall to do a small session on connectal communication model.
-
-// // This is the only interface I should need
-// // for connectal in the end.
-// // For development/testing, should I just add
-// // get___() methods for each stage?
-// interface PipeLine;
-//     interface Put#(Transform) setTransform;
-//     interface Put#(Triangle) pushTriangle;
-//     interface Get#(Frag) getFrag;
-// endinterface
-// // Stretch goal: getFrameBuffer() instead
-// // of getFrag() :)

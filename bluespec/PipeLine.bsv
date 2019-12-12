@@ -12,6 +12,7 @@ interface PipeLine;
     interface TransformReq setTransform;
     interface TriangleReq inputTriangles;
     interface StopReq stopRunning;
+    interface KillReq killProgram;
 endinterface
 
 module mkPipeLine#(PipeLineIndication indication)(PipeLine);
@@ -19,7 +20,18 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
     FIFO#(Frag) fifoFragOut <- mkFIFO;
     SettableTransformAndDivide transf <- mkTransformDivide;
     XiaoLinWu xlw <- mkXiaoLinWu;
-
+    
+    Reg#(Bool) pleaseStop <- mkReg(False);
+    Reg#(UInt#(16)) numTriangles <- mkReg(0);
+    Reg#(UInt#(16)) numTrianglesFinished <- mkReg(0);
+    Reg#(UInt#(32)) numCycles <- mkReg(0);
+    Reg#(Bool) countingCycles <- mkReg(False);
+    Reg#(UInt#(32)) numFragments <- mkReg(0);
+    
+    rule count_cycle (countingCycles);
+    	numCycles <= numCycles + 1;
+    endrule
+    
     // Some state for in_to_tr
     Reg#(Vec3) bufferA <- mkRegU;
     Reg#(Vec3) bufferB <- mkRegU;
@@ -47,45 +59,35 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
             //fxptWrite(3,t.c.x); $write(" "); fxptWrite(3,t.c.y); $write(" "); fxptWrite(3,t.c.z); $write("\n");
         end
     endrule
-	/*
+    
     // Some state for tr_to_tr
-    Reg#(FragPos) aFragPos <- mkRegU;
-    Reg#(Bool) validAFragPos <- mkReg(False);
-    Reg#(Bool) validLastFragPos <- mkReg(False);
     Reg#(FragPos) lastFragPos <- mkRegU;
-    // If we want to draw multiple objects, this should be reset by some method
+    Reg#(FragPos) prevFragPos <- mkRegU;
+    Reg#(Bool) prevValid <- mkReg(False);
     Reg#(Bit#(3)) triIdx <- mkReg(1);
-    // Takes transformed vertices (now as FragPos) and feeds them as lines
-    // to the XiaoLinWu algorithm
     rule tr_to_xl;
-        let fragPos <- transf.doTransform.response.get();
-        if (triIdx[0] == 1) begin
-        	if (validAFragPos) begin
-        		if (lastFragPos.x != 0 && lastFragPos.y != 0 && aFragPos.x != 0 && aFragPos.y != 0)
-        			xlw.request.put(tuple2(lastFragPos, aFragPos));
-        	end
-        	validAFragPos <= True;
-        	aFragPos <= fragPos;
-        end else begin
-        	if (validLastFragPos && lastFragPos.x != 0 && lastFragPos.y != 0 && fragPos.x != 0 && fragPos.y != 0)
-        		xlw.request.put(tuple2(lastFragPos, fragPos));
-        end
-        triIdx <= {triIdx[1], triIdx[0], triIdx[2]};
-        lastFragPos <= fragPos;
-        validLastFragPos <= True;
+    	let fragPos <- transf.doTransform.response.get();
+    	if (triIdx[0] == 1) begin
+    		if (prevValid) begin
+    			xlw.request.put(tuple2(lastFragPos, prevFragPos));
+    			numTrianglesFinished <= numTrianglesFinished + 1;
+    		end
+    		prevFragPos <= fragPos;
+    		prevValid <= True;
+    	end else begin
+    		xlw.request.put(tuple2(lastFragPos, fragPos));
+    	end
+    	triIdx <= {triIdx[1], triIdx[0], triIdx[2]};
+    	lastFragPos <= fragPos;
     endrule
-    */
-    // Runs if there is no new triangle vertices available, but we still
-    // need to draw the third edge of the last triangle
+    
+    rule tr_to_xl_edge (prevValid && (triIdx[0] == 1));
+    	xlw.request.put(tuple2(lastFragPos, prevFragPos));
+    	numTrianglesFinished <= numTrianglesFinished + 1;
+    	prevValid <= False;
+    endrule
+    
     /*
-    rule tr_to_xl_edge (validAFragPos && (triIdx[0] == 1));
-    	xlw.request.put(tuple2(lastFragPos, aFragPos));
-    	validAFragPos <= False;
-    	$display("tr_to_xl_edge ran");
-    endrule
-    */
-    
-    
     rule just_points;
     	let fragPos <- transf.doTransform.response.get();
     	FragPos ofp = FragPos{x:fragPos.x+1,y:fragPos.y+1,z:fragPos.z};
@@ -94,8 +96,8 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
     	if (fragPos.x == 0)
     		$display("no good's afoot");
     endrule
+    */
     
-
     // Some state for xlw_to_host
     Reg#(Frag) fragBufA <- mkRegU;
     Reg#(Frag) fragBufB <- mkRegU;
@@ -123,9 +125,18 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
             validFragA <= fw.vb; // first two in wave always valid
             validFragB <= fw.vc;
             validFragC <= fw.vd;
-            //$display("HW: xlw_to_host - new FragWave");
-            //$display("Frag: x:%d, y:%d", f.pos.x, f.pos.y);
         end
+        numFragments <= numFragments + 1;
+    endrule
+
+    Reg#(Bool) stopped <- mkReg(False);
+    rule do_exit (!stopped && pleaseStop && (numTrianglesFinished >= numTriangles));
+    	indication.confirmStop(0);
+    	$display("HW: ready to stop");
+    	$display("Num cycles: %d", numCycles);
+    	$display("Num triangles: %d", numTriangles);
+    	$display("Num fragments: %d", numFragments);
+    	stopped <= True;
     endrule
 
     interface TransformReq setTransform;
@@ -133,7 +144,6 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
 	                      Bit#(16) mxx , Bit#(16) mxy , Bit#(16) mxz ,
 	                      Bit#(16) myx , Bit#(16) myy , Bit#(16) myz ,
 	                      Bit#(16) mzx , Bit#(16) mzy , Bit#(16) mzz );
-	        //indication.callbackFrag(truncate(posx), truncate(posy), truncate(posz), 0);
 	        Mat3 m = Mat3 {
 	        xx: unpack(mxx), xy: unpack(mxy), xz: unpack(mxz),
 	        yx: unpack(myx), yy: unpack(myy), yz: unpack(myz),
@@ -157,13 +167,22 @@ module mkPipeLine#(PipeLineIndication indication)(PipeLine);
 		    t.c = Vec3{x:unpack(cx), y:unpack(cy), z:unpack(cz)};
 		    t.valid = valid;
 		    fifoTriIn.enq(t);
+		    countingCycles <= True;
+		    numTriangles <= numTriangles + 1;
 		    //$display("HW: recieved new triangle");
         endmethod
     endinterface
     
     interface StopReq stopRunning;
     	method Action stop;
-    		$display("Stopping hardware");
+    		$display("HW: Will stop when finished");
+    		pleaseStop <= True;
+    	endmethod
+    endinterface
+    
+    interface KillReq killProgram;
+    	method Action kill;
+    		$display("HW: $finish");
     		$finish;
     	endmethod
     endinterface

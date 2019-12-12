@@ -347,15 +347,15 @@ module mkXiaoLinWu(XiaoLinWu);
 
 	interface Put request;
 	    method Action put(Tuple2#(FragPos, FragPos) tup);
-	    	let a = tpl_1(tup); // pipeline
-	    	let b = tpl_2(tup); // pipeline
+	    	let a = tpl_1(tup);
+	    	let b = tpl_2(tup);
 			let xf = (a.x > b.x);
 			let yf = (a.y > b.y);
 	
-			let tx0 = (xf) ? b.x : a.x; // pipeline
-			let tx1 = (xf) ? a.x : b.x; // pipeline
-			let ty0 = (yf) ? b.y : a.y; // pipeline
-			let ty1 = (yf) ? a.y : b.y; // pipeline
+			let tx0 = (xf) ? b.x : a.x;
+			let tx1 = (xf) ? a.x : b.x;
+			let ty0 = (yf) ? b.y : a.y;
+			let ty1 = (yf) ? a.y : b.y;
 
 			// Subtraction
 			Bit#(10) xdiff_ten = extend(pack(tx1)) - extend(pack(tx0));
@@ -365,9 +365,9 @@ module mkXiaoLinWu(XiaoLinWu);
 			Bit#(8) xdiff_fraction = {xdiff_ten[2:0], '0};
 			Bit#(8) ydiff_integer = {'0, ydiff_ten[9:3]};
 			Bit#(8) ydiff_fraction = {ydiff_ten[2:0], '0};
-			Fractional xdiff = Fractional{i:xdiff_integer, f:xdiff_fraction}; // pipeline
-			Fractional ydiff = Fractional{i:ydiff_integer, f:ydiff_fraction}; // pipeline
-			Fractional zdiff = b.z - a.z; // pipeline
+			Fractional xdiff = Fractional{i:xdiff_integer, f:xdiff_fraction};
+			Fractional ydiff = Fractional{i:ydiff_integer, f:ydiff_fraction};
+			Fractional zdiff = b.z - a.z;
 			
 			//test
 			Bool mSwaps = ydiff > xdiff;
@@ -381,20 +381,3 @@ module mkXiaoLinWu(XiaoLinWu);
 	
     interface response = toGet(outFIFO);
 endmodule
-
-
-/*
-		$display("HW: XiaoLinWu: line started, outwave enqueued");
-		
-		$display("tx0: %d, ty0: %d, tx1: %d, ty1: %d", tx0, ty0, tx1, ty1);
-		$display("ixdiff: %d", ixdiff);
-		$write("xdiff: "); fxptWrite(3, xdiff*32); $display(" ");
-		$write("ydiff: "); fxptWrite(3, ydiff*32); $display(" ");
-		$write("k: "); fxptWrite(3, k); $display(" ");
-		$write("fractky: "); fxptWrite(3, fractky); $display(" ");
-		$write("fractMaxVal: "); fxptWrite(3, fractMaxVal); $display(" ");
-		$display("fractky.i: %b", fractky.i);
-		$display("fractky.i[5:0]: %b", fractky.i[5:0]);
-		$display("ky: %d", thisky);
-		$display("maxval: %d", maxval);
-		*/
